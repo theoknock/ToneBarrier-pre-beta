@@ -9,11 +9,6 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <AVFoundation/AVFoundation.h>
 
-typedef NS_ENUM(NSUInteger, StereoChannels) {
-    StereoChannelR,
-    StereoChannelL
-};
-
 typedef void (^PlayToneCompletionBlock)(void);
 typedef void (^CreateAudioBufferCompletionBlock)(AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, PlayToneCompletionBlock _Nonnull playToneCompletionBlock);
 
@@ -25,7 +20,7 @@ typedef void (^CreateAudioBufferCompletionBlock)(AVAudioPCMBuffer * _Nonnull buf
 
 @protocol ToneWaveRendererDelegate <NSObject>
 
-- (void)drawFrequency:(double)frequency amplitude:(double)amplitude channel:(StereoChannels)channel;
+//- (void)drawFrequency:(double)frequency amplitude:(double)amplitude channel:(StereoChannels)channel;
 
 // Since the draw layer frame size is needed from the delegate-view to create a path, this method must return a block that requires the parameters from the delegate-view before executing it
 // The problem with that is you lose the advantage of calculating the path at the same time you create the buffer (those are now split into two separate for-loops, when they could conceivably be combined into one)

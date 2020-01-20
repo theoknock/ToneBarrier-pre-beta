@@ -12,11 +12,13 @@
 #import "ToneGenerator.h"
 #import "ToneBarrierPlayer.h"
 #import "ClicklessTones.h"
+#import "FrequenciesPairs.h"
+#import "Frequencies.h"
 
 #include "easing.h"
 
-static const float high_frequency = 6000.0;
-static const float low_frequency  = 1000.0;
+//static const float high_frequency = 6000.0;
+//static const float low_frequency  = 1000.0;
 
 @interface ToneGenerator ()
 
@@ -154,23 +156,50 @@ static ToneGenerator *sharedGenerator = NULL;
 //}
 
 /// / To-Do: Use dispatch_io to read buffers instead
+
+static const float high_frequency = 6000.0;
+static const float low_frequency  = 1000.0;
+
+NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSDictionary<NSString *, id> *> *(void)
+{
+    NSMutableArray *tones = [NSMutableArray arrayWithCapacity:90];
+    for (int i = 0; i < 180; i++)
+    {
+        AVAudioTime *time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(CMClockGetTime(CMClockGetHostTimeClock()))];
+        NSDictionary *td = @{@"time" : time,
+                             @"frequency_right" : @((((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)),
+                             @"frequency_left" : @((((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency))};
+        [tones addObject:td];
+        
+        float randomNum = (((double)arc4random() / 0x100000000) * (1.0 - 0.0) + 0.0);
+        CMTime current_cmtime = CMTimeAdd(CMClockGetTime(CMClockGetHostTimeClock()), CMTimeMakeWithSeconds(randomNum, NSEC_PER_SEC));
+        time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(current_cmtime)];
+        td = @{@"time" : time,
+               @"frequency_right" : @((((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency)),
+               @"frequency_left" : @((((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency))};
+        [tones addObject:td];
+    }
+    
+    return tones;
+};
+
 - (void)start
 {
     [[AVAudioSession sharedInstance] setActive:YES error:nil];
-    
+
     if (self.audioEngine.isRunning == NO)
     {
         NSError *error = nil;
         [_audioEngine startAndReturnError:&error];
         NSLog(@"error: %@", error);
         [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
-        
+
         if (![self->_playerOneNode isPlaying] || ![self->_playerTwoNode isPlaying])
         {
             [self->_playerOneNode play];
             [self->_playerTwoNode play];
         }
-        
+
         if (self->_playerOneNode)
         {
             //        [self createAudioBufferWithCompletionBlock:^(AVAudioPCMBuffer *buffer1, AVAudioPCMBuffer *buffer2, PlayToneCompletionBlock playToneCompletionBlock) {
@@ -184,9 +213,9 @@ static ToneGenerator *sharedGenerator = NULL;
             //                //                NSLog(@"Calling playToneCompletionBlock 2...");
             //            }];
             //        }];
-//            ToneBarrierPlayer *player = [[ToneBarrierPlayer alloc] init];
+            //            ToneBarrierPlayer *player = [[ToneBarrierPlayer alloc] init];
             ClicklessTones *tones = [[ClicklessTones alloc] init];
-            
+
             [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
             [ToneBarrierPlayer.context createAudioBufferWithFormat:[self->_mixerNode outputFormatForBus:0] completionBlock:^(AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, PlayToneCompletionBlock playToneCompletionBlock) {
                 [self->_playerOneNode scheduleBuffer:buffer1 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
@@ -202,6 +231,107 @@ static ToneGenerator *sharedGenerator = NULL;
         }
     }
 }
+
+NSArray<Frequencies *> * (^pairFrequencies)(Frequencies *, AVAudioTime *) = ^NSArray<Frequencies *> * (Frequencies *returnFrequencies, AVAudioTime *time)
+{
+    StereoChannel returnFrequenciesStereoChannel = (StereoChannel)returnFrequencies.channel.unsignedIntValue;
+    [returnFrequencies setChannel:(returnFrequenciesStereoChannel != StereoChannelLeft) ? @(StereoChannelLeft) : @(StereoChannelRight)];
+    
+    NSMutableArray<Frequencies *> *pairs = [NSMutableArray new];
+    [pairs addObject:[[Frequencies alloc] initWithFrequency1:returnFrequencies.frequency1.doubleValue frequency2:returnFrequencies.frequency2.doubleValue stereoChannel:(StereoChannel)returnFrequencies.channel.unsignedIntValue time:time]];
+    [pairs addObject:[[Frequencies alloc] initWithFrequency1:(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency) frequency2:(((double)arc4random() / 0x100000000) * (high_frequency - low_frequency) + low_frequency) stereoChannel:returnFrequenciesStereoChannel time:time]];
+    
+    NSLog(@"Return frequencies (1st): %f\t%f", pairs.firstObject.frequency1.doubleValue, pairs.firstObject.frequency2.doubleValue);
+    NSLog(@"Return frequencies (2nd): %f\t%f", pairs.lastObject.frequency1.doubleValue, pairs.lastObject.frequency2.doubleValue);
+    NSLog(@"Time: %f", [AVAudioTime secondsForHostTime:[pairs.firstObject.time hostTime]]);
+    
+    return (NSArray<Frequencies *> *)pairs;
+};
+
+AVAudioTime *(^bufferSchedule)(CMTime, NSUInteger) = ^AVAudioTime *(CMTime current_time, NSUInteger count)
+{
+    CMTime scheduled_time = CMTimeAdd(current_time, CMTimeMakeWithSeconds(count, NSEC_PER_SEC));
+    AVAudioTime *time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(scheduled_time)];
+    
+    return time;
+};
+
+NSArray<NSArray<Frequencies *> *> *(^scoreFrequenciesPairs)(void) = ^NSArray<NSArray<Frequencies *> *> *(void)
+{
+    __block NSMutableArray *score = [NSMutableArray new];
+    CMTime current_time = CMClockGetTime(CMClockGetHostTimeClock());
+    __block NSUInteger count = 0;
+    static void (^block)(Frequencies *);
+    block = ^void(Frequencies *returnFrequencies)
+    {
+        NSArray<Frequencies *> *frequenciesPair = pairFrequencies(returnFrequencies, bufferSchedule(current_time, count++));
+        [score addObject:frequenciesPair];
+        if (score.count < 90) block([frequenciesPair lastObject]);
+        //        if ([ToneGenerator.sharedGenerator.audioEngine isRunning]) block([frequenciesPair lastObject]); // Can't do this without a completion block that returns every frequenciesPair array
+    };
+    block(nil);
+    
+    return score;
+};
+
+AVAudioPCMBuffer * (^audioBufferFromFrequencies)(Frequencies *, AVAudioFormat *) = ^AVAudioPCMBuffer *(Frequencies *frequencies, AVAudioFormat *audioFormat)
+{
+    AVAudioFrameCount frameCount = audioFormat.sampleRate;
+    AVAudioPCMBuffer *pcmBuffer = [[AVAudioPCMBuffer alloc] initWithPCMFormat:audioFormat frameCapacity:frameCount];
+    pcmBuffer.frameLength = frameCount;
+    float *left_channel  = pcmBuffer.floatChannelData[0];
+    float *right_channel = (audioFormat.channelCount == 2) ? pcmBuffer.floatChannelData[1] : nil;
+    
+    int amplitude_frequency = arc4random_uniform(8) + 4;
+    for (int index = 0; index < frameCount; index++)
+    {
+        double normalized_index = LinearInterpolation(index, frameCount);
+        if (left_channel)  left_channel[index]  = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency1.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency));
+        if (right_channel) right_channel[index] = (NormalizedSineEaseInOut(normalized_index, frequencies.frequency2.doubleValue) * NormalizedSineEaseInOut(normalized_index, amplitude_frequency)); // fade((leading_fade == FadeOut) ? FadeIn : leading_fade, normalized_index, (SineEaseInOutFrequency(normalized_index, frequencyRight) * NormalizedSineEaseInOutAmplitude((1.0 - normalized_index), 1)));
+    }
+    
+    return pcmBuffer;
+};
+
+void (^scheduleBuffers)(AVAudioPlayerNode *, AVAudioPlayerNode *, AVAudioFormat *) = ^void(AVAudioPlayerNode *playerNode1, AVAudioPlayerNode *playerNode2, AVAudioFormat *audioFormat)
+{
+//    AVAudioTime *time = [[AVAudioTime alloc] initWithHostTime:CMClockConvertHostTimeToSystemUnits(CMClockGetTime(CMClockGetHostTimeClock()))];
+    NSArray<NSArray<Frequencies *> *> *score = (NSArray<NSArray<Frequencies *> *> *)[NSArray arrayWithArray:scoreFrequenciesPairs()];
+    for (NSUInteger index = 0; index < score.count; index++)  // (NSArray<Frequencies *> *frequencyPair in score)
+    {
+        NSArray<Frequencies *> *frequencyPair = (NSArray<Frequencies *> *)[score objectAtIndex:index];
+        [playerNode1 scheduleBuffer:audioBufferFromFrequencies([frequencyPair firstObject], audioFormat) atTime:[[frequencyPair firstObject] time] options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
+            NSLog(@"%lu Played frequencies (1st): %f\t%f\t%f", index, frequencyPair.firstObject.frequency1.doubleValue, frequencyPair.firstObject.frequency2.doubleValue, [AVAudioTime secondsForHostTime:[frequencyPair.firstObject.time hostTime]]);
+        }];
+        [playerNode2 scheduleBuffer:audioBufferFromFrequencies([frequencyPair lastObject], audioFormat) atTime:[[frequencyPair lastObject] time] options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
+           NSLog(@"%lu Played frequencies (2nd): %f\t%f\t%f", index, frequencyPair.lastObject.frequency1.doubleValue, frequencyPair.lastObject.frequency2.doubleValue, [AVAudioTime secondsForHostTime:[frequencyPair.lastObject.time hostTime]]);
+        }];
+    }
+};
+
+//- (void)start
+//{
+//    [[AVAudioSession sharedInstance] setActive:YES error:nil];
+//
+//    if (self.audioEngine.isRunning == NO)
+//    {
+//        NSError *error = nil;
+//        [_audioEngine startAndReturnError:&error];
+//        NSLog(@"error: %@", error);
+//        [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
+//
+//        if (![self->_playerOneNode isPlaying] || ![self->_playerTwoNode isPlaying])
+//        {
+//            [self->_playerOneNode play];
+//            [self->_playerTwoNode play];
+//        }
+//
+//        if (self->_playerOneNode && self->_playerTwoNode)
+//        {
+//            scheduleBuffers(self->_playerOneNode, self->_playerTwoNode, [self->_mixerNode outputFormatForBus:0]);
+//        }
+//    }
+//}
 
 /*
  BARRIER ONE
@@ -492,9 +622,12 @@ static ToneGenerator *sharedGenerator = NULL;
     //    dispatch_source_cancel(self->_timer);
     //    self->_timer = nil;
     //    dispatch_async(dispatch_get_main_queue(), ^{
-//    [self->_playerOneNode stop];
-//    [self->_playerTwoNode stop];
+    //    [self->_playerOneNode stop];
+    //    [self->_playerTwoNode stop];
     if (self.audioEngine.isRunning == YES) [self->_audioEngine pause];
+    //        [self.playerOneNode reset];
+    //        [self.playerTwoNode reset];
+    
     
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
     //    });

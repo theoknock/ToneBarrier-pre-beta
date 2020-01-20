@@ -156,13 +156,13 @@ static void (^drawPathToChannelPathLayer)(CAShapeLayer *, UIBezierPath *, UIColo
 };
 
 
-- (void)drawFrequency:(double)frequency amplitude:(double)amplitude channel:(StereoChannels)channel
-{
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.graphView drawFrequency:frequency amplitude:amplitude];
-        [self.graphView setNeedsDisplay];
-    });
-}
+//- (void)drawFrequency:(double)frequency amplitude:(double)amplitude channel:(StereoChannels)channel
+//{
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        [self.graphView drawFrequency:frequency amplitude:amplitude];
+//        [self.graphView setNeedsDisplay];
+//    });
+//}
 
 //- (void)drawFrequency:(double)frequency amplitude:(double)amplitude channel:(StereoChannels)channel
 //{
