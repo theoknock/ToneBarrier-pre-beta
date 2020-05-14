@@ -24,6 +24,8 @@ static const float max_duration   = 2.00;
 
 @property (nonatomic, readonly) GKMersenneTwisterRandomSource * _Nullable randomizer;
 @property (nonatomic, readonly) GKGaussianDistribution * _Nullable distributor;
+
+// Randomizes duration
 @property (nonatomic, readonly) GKGaussianDistribution * _Nullable distributor_duration;
 
 @end
