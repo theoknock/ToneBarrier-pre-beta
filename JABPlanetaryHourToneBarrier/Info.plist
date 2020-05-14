@@ -2,14 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>kTCCServiceMediaLibrary</key>
-	<string>Play the tone barrier while the device is locked</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Heart rate data improves the efficacy of the tone barrier</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Heart rate data improve the efficacy of the tone barrier</string>
-	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
-	<string>Heart rate data is recorded to increase the quality of improvements to the efficacy of the tone barrier</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier.receiveApplicationContext</string>
@@ -32,6 +24,12 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+	<string>Heart rate data is recorded to increase the quality of improvements to the efficacy of the tone barrier</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Heart rate data improve the efficacy of the tone barrier</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Heart rate data improves the efficacy of the tone barrier</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
@@ -63,5 +61,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>kTCCServiceMediaLibrary</key>
+	<string>Play the tone barrier while the device is locked</string>
 </dict>
 </plist>

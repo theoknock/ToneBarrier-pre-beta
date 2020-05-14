@@ -171,9 +171,9 @@
     if (watchConnectivitySession.isReachable)
     {
         [watchConnectivitySession sendMessage:@{@"ToneGenerator" : @"Toggle"} replyHandler:^(NSDictionary<NSString *,id> * _Nonnull replyMessage) {
-//            dispatch_async(dispatch_get_main_queue(), ^{
-                [self updatePeerDeviceStatusInterface:replyMessage];
-//            });
+            //            dispatch_async(dispatch_get_main_queue(), ^{
+            [self updatePeerDeviceStatusInterface:replyMessage];
+            //            });
         } errorHandler:^(NSError * _Nonnull error) {
             NSLog(@"Tone generator activation error: %@", error.description);
         }];

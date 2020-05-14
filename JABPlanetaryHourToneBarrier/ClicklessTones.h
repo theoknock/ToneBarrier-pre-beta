@@ -7,12 +7,14 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <GameKit/GameKit.h>
 #import "ToneGenerator.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ClicklessTones : NSObject <ToneBarrierPlayerDelegate>
 
+- (instancetype)init;
 - (void)createAudioBufferWithFormat:(AVAudioFormat *)audioFormat completionBlock:(CreateAudioBufferCompletionBlock)createAudioBufferCompletionBlock;
 
 @end

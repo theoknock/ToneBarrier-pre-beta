@@ -245,12 +245,11 @@ static void (^drawPathToChannelPathLayer)(CAShapeLayer *, UIBezierPath *, UIColo
 - (void)addStatusObservers
 {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleInterruption:) name:AVAudioSessionInterruptionNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleInterruption:) name:AVCaptureSessionInterruptionEndedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:NSProcessInfoThermalStateDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:UIDeviceBatteryLevelDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:UIDeviceBatteryStateDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:UIDeviceProximityStateDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus:) name:NSProcessInfoPowerStateDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:NSProcessInfoPowerStateDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateDeviceStatus) name:AVAudioSessionRouteChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(togglePlayButton) name:@"ToneBarrierPlayingNotification" object:nil];
     
 }
@@ -327,6 +326,12 @@ static bool(^powerState)(void) = ^bool(void)
     return [[NSProcessInfo processInfo] isLowPowerModeEnabled];
 };
 
+static bool(^audioRoute)(void) = ^bool(void)
+{
+    // NOT DONE
+    return [[NSProcessInfo processInfo] isLowPowerModeEnabled];
+};                  
+
 static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionary<NSString *, id> * (UIDevice * device)
 {
     NSDictionary<NSString *, id> * status =
@@ -334,6 +339,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
       @"UIDeviceBatteryLevelDidChangeNotification"      : @(batteryLevel(device)),
       @"UIDeviceBatteryStateDidChangeNotification"      : @(batteryState(device)),
       @"NSProcessInfoPowerStateDidChangeNotification"   : @(powerState()),
+      @"AVAudioSessionRouteChangeNotification"          : @(audioRoute()),
       @"ToneBarrierPlayingNotification"                 : @([ToneGenerator.sharedGenerator.audioEngine isRunning])};
     
     return status;

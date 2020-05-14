@@ -167,6 +167,7 @@
 		B904CDF022D3CA360086CAF8 /* PushNotificationPayload.apns */ = {isa = PBXFileReference; lastKnownFileType = text; path = PushNotificationPayload.apns; sourceTree = "<group>"; };
 		B90B3A4B23D3F3C3008944E8 /* Frequencies.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Frequencies.h; sourceTree = "<group>"; };
 		B90B3A4C23D3F3C3008944E8 /* Frequencies.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Frequencies.m; sourceTree = "<group>"; wrapsLines = 0; };
+		B923B37223FB66DA00B67763 /* JABPlanetaryHourFrameworks.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = JABPlanetaryHourFrameworks.xcodeproj; path = "../../../Documents/JABPlanetaryHour ƒ/JABPlanetaryHourFrameworks/JABPlanetaryHourFrameworks.xcodeproj"; sourceTree = "<group>"; };
 		B954D8D022D4A42C001AF97D /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		B968BA0823A9E303005C6653 /* ClicklessTones.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ClicklessTones.h; sourceTree = "<group>"; wrapsLines = 0; };
 		B968BA0923A9E303005C6653 /* ClicklessTones.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ClicklessTones.m; sourceTree = "<group>"; wrapsLines = 0; };
@@ -288,6 +289,7 @@
 				B9E0231523126ADE00035A41 /* GraphView.m */,
 				B98CF2C822D583CB00661419 /* ToneGenerator.h */,
 				B98CF2C722D583CB00661419 /* ToneGenerator.m */,
+				B923B37223FB66DA00B67763 /* JABPlanetaryHourFrameworks.xcodeproj */,
 				B90B3A4B23D3F3C3008944E8 /* Frequencies.h */,
 				B90B3A4C23D3F3C3008944E8 /* Frequencies.m */,
 				B968BA0B23A9E40F005C6653 /* ToneBarrierPlayer.h */,
@@ -337,6 +339,13 @@
 				B904CDF022D3CA360086CAF8 /* PushNotificationPayload.apns */,
 			);
 			path = "JABPlanetaryHourToneBarrier WatchKit Extension";
+			sourceTree = "<group>";
+		};
+		B923B37323FB66DA00B67763 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		B954D8CF22D4A42C001AF97D /* Frameworks */ = {
@@ -513,6 +522,12 @@
 			mainGroup = B904CDAE22D3CA340086CAF8;
 			productRefGroup = B904CDB822D3CA340086CAF8 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = B923B37323FB66DA00B67763 /* Products */;
+					ProjectRef = B923B37223FB66DA00B67763 /* JABPlanetaryHourFrameworks.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				B904CDB622D3CA340086CAF8 /* JABPlanetaryHourToneBarrier */,
@@ -801,7 +816,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier.watchkitapp.watchkitextension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.ToneBarrier.watchkitapp.watchkitextension;
 				PRODUCT_NAME = "${TARGET_NAME}";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -840,7 +855,7 @@
 				DEVELOPMENT_TEAM = N9987K9442;
 				IBSC_MODULE = JABPlanetaryHourToneBarrier_WatchKit_Extension;
 				INFOPLIST_FILE = "JABPlanetaryHourToneBarrier WatchKit App/Info.plist";
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.ToneBarrier.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -878,7 +893,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.ToneBarrier;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -933,7 +948,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier.JABPlanetaryHourToneBarrierIntentsExtensionUI;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.ToneBarrier.ToneBarrierIntentsExtensionUI;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -972,7 +987,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.JABPlanetaryHourToneBarrier.JABPlanetaryHourToneBarrierIntentsExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blogspot.demonicactivity.bush.alan.james.ToneBarrier.ToneBarrierIntentsExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
