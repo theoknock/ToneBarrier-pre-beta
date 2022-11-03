@@ -11,9 +11,10 @@
 #import <GameKit/GameKit.h>
 
 #import "ToneGenerator.h"
+#import "ViewController+Audio.h"
 #import "ToneBarrierPlayer.h"
 #import "ClicklessTones.h"
-#import "FrequenciesPairs.h"
+//#import "FrequenciesPairs.h"
 #import "Frequencies.h"
 
 #include "easing.h"
@@ -23,9 +24,9 @@
 
 @interface ToneGenerator ()
 
-@property (nonatomic, readonly) AVAudioMixerNode * mixerNode;
-@property (nonatomic, readonly) AVAudioPCMBuffer * pcmBufferOne;
-@property (nonatomic, readonly) AVAudioPCMBuffer * pcmBufferTwo;
+//@property (nonatomic, readonly) AVAudioMixerNode * mixerNode;
+//@property (nonatomic, readonly) AVAudioPCMBuffer * pcmBufferOne;
+//@property (nonatomic, readonly) AVAudioPCMBuffer * pcmBufferTwo;
 @property (nonatomic, readonly) AVAudioEnvironmentNode * environmentNode;
 @property (nonatomic, readonly) AVAudioMixerNode *submixer;
 @property (nonatomic, readonly) AVAudioUnitReverb *reverb;
@@ -34,6 +35,10 @@
 @end
 
 @implementation ToneGenerator
+
+- (void)alarm {
+    
+}
 
 - (NSUInteger)greatestCommonDivisor:(NSUInteger)firstValue secondValue:(NSUInteger)secondValue
 {
@@ -72,44 +77,49 @@ static ToneGenerator *sharedGenerator = NULL;
     if (self)
     {
         //        semaphore = dispatch_semaphore_create(1);
-        _audioEngine = [[AVAudioEngine alloc] init];
-        _mixerNode = _audioEngine.mainMixerNode;
+        
+        audio_engine();
+        
+//        audio_engine_ref = [[AVAudioEngine alloc] init];
+        _mixerNode = audio_engine_ref.mainMixerNode;
         
 //        _environmentNode = [[AVAudioEnvironmentNode alloc] init];
 //        [_environmentNode setOutputType:AVAudioEnvironmentOutputTypeHeadphones];
 //        [_environmentNode setOutputVolume:1.0];
-//        [_audioEngine attachNode:_environmentNode];
+//        [audio_engine_ref attachNode:_environmentNode];
         
         _submixer = [[AVAudioMixerNode alloc] init];
-        [_audioEngine attachNode:_submixer];
+        [audio_engine_ref attachNode:_submixer];
         
         _reverb = [[AVAudioUnitReverb alloc] init];
         [_reverb loadFactoryPreset:AVAudioUnitReverbPresetLargeHall];
         [_reverb setWetDryMix:50];
-        [_audioEngine attachNode:_reverb];
+        [audio_engine_ref attachNode:_reverb];
         
         _playerOneNode = [[AVAudioPlayerNode alloc] init];
         [_playerOneNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
         [_playerOneNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
-        [_audioEngine attachNode:_playerOneNode];
-        [_audioEngine connect:_playerOneNode to:_submixer format:[_playerOneNode outputFormatForBus:0]];
+        [audio_engine_ref attachNode:_playerOneNode];
+        [audio_engine_ref connect:_playerOneNode to:_submixer format:[_playerOneNode outputFormatForBus:0]];
         
         _playerTwoNode = [[AVAudioPlayerNode alloc] init];
         [_playerTwoNode setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
         [_playerTwoNode setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
-        [_audioEngine attachNode:_playerTwoNode];
-        [_audioEngine connect:_playerTwoNode to:_submixer format:[_playerTwoNode outputFormatForBus:0]];
+        [audio_engine_ref attachNode:_playerTwoNode];
+        [audio_engine_ref connect:_playerTwoNode to:_submixer format:[_playerTwoNode outputFormatForBus:0]];
         
-        [_audioEngine connect:_submixer to:_reverb format:[_playerOneNode outputFormatForBus:0]];
-        [_audioEngine connect:_reverb to:_mixerNode format:[_playerOneNode outputFormatForBus:0]];
+        [audio_engine_ref connect:_submixer to:_reverb format:[_playerOneNode outputFormatForBus:0]];
+        [audio_engine_ref connect:_reverb to:_mixerNode format:[_playerOneNode outputFormatForBus:0]];
         
-        
+        [_mixerNode setOutputVolume:1.0];
         
         __autoreleasing NSError *error = nil;
-                [_audioEngine startAndReturnError:&error];
+        [audio_engine_ref startAndReturnError:&error];
         
-        [[AVAudioSession sharedInstance] setActive:YES error:&error];
-        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+        audio_session();
+        [audio_session_ref setActive:YES error:&error];
+        [audio_session_ref setCategory:AVAudioSessionCategoryPlayback error:nil];
+        [audio_session_ref setPrefersNoInterruptionsFromSystemAlerts:TRUE error:&error];
     }
     
     return self;
@@ -209,12 +219,13 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
 
 - (void)start
 {
-    [[AVAudioSession sharedInstance] setActive:YES error:nil];
+    [audio_session_ref setPrefersNoInterruptionsFromSystemAlerts:TRUE error:nil];
+    [audio_session_ref setActive:YES error:nil];
 
-    if (self.audioEngine.isRunning == NO)
+    if (audio_engine_ref.isRunning == NO)
     {
         NSError *error = nil;
-        [_audioEngine startAndReturnError:&error];
+        [audio_engine_ref startAndReturnError:&error];
         NSLog(@"error: %@", error);
         [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
 
@@ -256,6 +267,8 @@ NSArray<NSDictionary<NSString *, id> *> *(^tonesDictionary)(void) = ^NSArray<NSD
             }];
         }
     }
+    
+    NSLog(@"audio_engine_ref.running = %@", (audio_engine_ref.running) ? @"TRUE" : @"FALSE");
 }
 
 NSArray<Frequencies *> * (^pairFrequencies)(NSArray<Frequencies *> *, AVAudioTime *) = ^NSArray<Frequencies *> * (NSArray<Frequencies *> * frequenciesPair, AVAudioTime *time)
@@ -296,7 +309,7 @@ NSArray<NSArray<Frequencies *> *> *(^scoreFrequenciesPairs)(void) = ^NSArray<NSA
         NSArray<Frequencies *> *frequenciesPair = pairFrequencies(returnFrequencies, bufferSchedule(current_time, count++));
         [score addObject:frequenciesPair];
         if (score.count < 90) block([frequenciesPair lastObject]);
-        //        if ([ToneGenerator.sharedGenerator.audioEngine isRunning]) block([frequenciesPair lastObject]); // Can't do this without a completion block that returns every frequenciesPair array
+        //        if ([audio_engine_ref isRunning]) block([frequenciesPair lastObject]); // Can't do this without a completion block that returns every frequenciesPair array
     };
     block(nil);
     
@@ -550,7 +563,7 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //    if (self.audioEngine.isRunning == NO)
 //    {
 //        NSError *error = nil;
-//        [_audioEngine startAndReturnError:&error];
+//        [audio_engine_ref startAndReturnError:&error];
 //        NSLog(@"error: %@", error);
 //        [[NSNotificationCenter defaultCenter] postNotificationName:@"ToneBarrierPlayingNotification" object:nil userInfo:nil];
 //
@@ -576,7 +589,7 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //    if (self.audioEngine.isRunning == NO)
 //    {
 //        NSError *error = nil;
-//        [_audioEngine startAndReturnError:&error];
+//        [audio_engine_ref startAndReturnError:&error];
 //        NSLog(@"error: %@", error);
 //    }
 //
@@ -618,7 +631,7 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //     if (self.audioEngine.isRunning == NO)
 //     {
 //         NSError *error = nil;
-//         [_audioEngine startAndReturnError:&error];
+//         [audio_engine_ref startAndReturnError:&error];
 //         NSLog(@"error: %@", error);
 //     }
 //
@@ -684,7 +697,7 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //    if (self.audioEngine.isRunning == NO)
 //    {
 //        NSError *error = nil;
-//        [_audioEngine startAndReturnError:&error];
+//        [audio_engine_ref startAndReturnError:&error];
 //        NSLog(@"error: %@", error);
 //    }
 //
@@ -829,7 +842,7 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
 //    if (self.audioEngine.isRunning == NO)
 //    {
 //        NSError *error = nil;
-//        [_audioEngine startAndReturnError:&error];
+//        [audio_engine_ref startAndReturnError:&error];
 //        NSLog(@"error: %@", error);
 //    }
 //
@@ -858,7 +871,8 @@ typedef void (^DataRenderedCompletionBlock)(NSArray<Frequencies *> * frequencyPa
     //    dispatch_async(dispatch_get_main_queue(), ^{
     //    [self->_playerOneNode stop];
     //    [self->_playerTwoNode stop];
-    if (self.audioEngine.isRunning == YES) [self->_audioEngine pause];
+    [audio_engine_ref stop];
+    NSLog(@"audio_engine_ref.running = %@", (audio_engine_ref.running) ? @"TRUE" : @"FALSE");
     //        [self.playerOneNode reset];
     //        [self.playerTwoNode reset];
     

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21507" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Y6W-OH-hqX">
+    <device id="retina6_0" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21505"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="s0d-6b-0kx">
+            <objects>
+                <viewController id="Y6W-OH-hqX" customClass="ViewController" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="5EZ-qb-Rvc">
+                        <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" alpha="0.14999999999999999" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" misplaced="YES" image="waveform.path" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="ZD4-3E-c7a">
+                                <rect key="frame" x="0.0" y="215" width="390" height="398"/>
+                                <preferredSymbolConfiguration key="preferredSymbolConfiguration" weight="light"/>
+                            </imageView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LuO-v4-S7W" userLabel="Play Button">
+                                <rect key="frame" x="-186.66666666666666" y="364.33333333333331" width="763.33333333333337" height="128.33333333333331"/>
+                                <color key="tintColor" systemColor="linkColor"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="plain" image="play" catalog="system">
+                                    <preferredSymbolConfiguration key="preferredSymbolConfigurationForImage" configurationType="pointSize" pointSize="96" weight="thin"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="toggleToneGenerator:" destination="Y6W-OH-hqX" eventType="touchUpInside" id="lBu-xp-4a1"/>
+                                </connections>
+                            </button>
+                            <view opaque="NO" contentMode="scaleAspectFit" translatesAutoresizingMaskIntoConstraints="NO" id="K0J-XA-IVr" customClass="AVRoutePickerView">
+                                <rect key="frame" x="-34" y="733" width="458" height="77"/>
+                                <color key="tintColor" systemColor="linkColor"/>
+                                <accessibility key="accessibilityConfiguration">
+                                    <accessibilityTraits key="traits" button="YES"/>
+                                </accessibility>
+                            </view>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="vDu-zF-Fre"/>
+                        <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstItem="ZD4-3E-c7a" firstAttribute="height" secondItem="vDu-zF-Fre" secondAttribute="height" id="98F-0R-cSn"/>
+                            <constraint firstItem="ZD4-3E-c7a" firstAttribute="width" secondItem="vDu-zF-Fre" secondAttribute="width" id="9nL-aI-PAF"/>
+                            <constraint firstItem="ZD4-3E-c7a" firstAttribute="centerX" secondItem="vDu-zF-Fre" secondAttribute="centerX" id="IeT-hF-u4j"/>
+                            <constraint firstItem="K0J-XA-IVr" firstAttribute="width" secondItem="LuO-v4-S7W" secondAttribute="width" multiplier="0.6" id="Miu-nP-fCf"/>
+                            <constraint firstItem="K0J-XA-IVr" firstAttribute="centerX" secondItem="LuO-v4-S7W" secondAttribute="centerX" id="Nbf-Hx-O8s"/>
+                            <constraint firstItem="LuO-v4-S7W" firstAttribute="centerX" secondItem="vDu-zF-Fre" secondAttribute="centerX" id="UtD-1A-L8Q"/>
+                            <constraint firstItem="ZD4-3E-c7a" firstAttribute="centerY" secondItem="vDu-zF-Fre" secondAttribute="centerY" id="gZM-0v-I7b"/>
+                            <constraint firstItem="K0J-XA-IVr" firstAttribute="height" secondItem="LuO-v4-S7W" secondAttribute="height" multiplier="0.6" id="j3U-TP-GhG"/>
+                            <constraint firstItem="LuO-v4-S7W" firstAttribute="centerY" secondItem="vDu-zF-Fre" secondAttribute="centerY" id="li9-Ms-1Y9"/>
+                            <constraint firstItem="K0J-XA-IVr" firstAttribute="bottom" secondItem="vDu-zF-Fre" secondAttribute="bottom" id="uEq-e9-CcT"/>
+                            <constraint firstItem="LuO-v4-S7W" firstAttribute="width" secondItem="vDu-zF-Fre" secondAttribute="height" multiplier="1:1" id="xmg-VW-ddw"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="playButton" destination="LuO-v4-S7W" id="o5g-SD-gbk"/>
+                        <outlet property="routePickerView" destination="K0J-XA-IVr" id="wFf-co-N3U"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Ief-a0-LHa" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="140" y="3.5545023696682461"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="play" catalog="system" width="117" height="128"/>
+        <image name="waveform.path" catalog="system" width="128" height="113"/>
+        <systemColor name="linkColor">
+            <color red="0.0" green="0.47843137254901963" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
+    </resources>
+</document>

@@ -6,16 +6,21 @@
 //  Copyright © 2019 The Life of a Demoniac. All rights reserved.
 //
 
-#import <UIKit/UIKit.h>
 #import <WatchConnectivity/WatchConnectivity.h>
 #import <AudioUnit/AudioUnit.h>
 #import <AudioToolbox/AudioToolbox.h>
-#import <AVFoundation/AVFoundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <HealthKit/HealthKit.h>
 
+@import UIKit;
+@import Foundation;
+@import AVFoundation;
+@import AVFAudio;
+@import AVRouting;
+@import AVKit;
+@import MediaPlayer;
+
 #import "AppDelegate.h"
-#import "ToneGenerator.h"
 
 #define low_bound   300.0f
 #define high_bound 4000.0f
@@ -26,10 +31,11 @@
 #define min_amplitude 0.5f
 #define max_amplitude 1.0f
 
-@interface ViewController : UIViewController <WCSessionDelegate, DeviceStatusInterfaceDelegate, ToneWaveRendererDelegate, UIGestureRecognizerDelegate>
+@interface ViewController : UIViewController <WCSessionDelegate, DeviceStatusInterfaceDelegate, UIGestureRecognizerDelegate, AVRoutePickerViewDelegate>
 
 @property (strong, nonatomic) UIDevice *device;
 @property (strong, nonatomic) WCSession *watchConnectivitySession;
+@property (weak, nonatomic) IBOutlet AVRoutePickerView *routePickerView;
 
 @end
 
