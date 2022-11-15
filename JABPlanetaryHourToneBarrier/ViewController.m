@@ -19,7 +19,6 @@
 {
     CAShapeLayer *pathLayerChannelR;
     CAShapeLayer *pathLayerChannelL;
-    BOOL _wasPlaying;
 }
 
 @property (weak, nonatomic) IBOutlet UIImageView *activationImageView;
@@ -526,42 +525,15 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (void)handleInterruption:(NSNotification *)notification
 {
-    _wasPlaying = ([audio_engine_ref isRunning]) ? TRUE : FALSE;
-    
-    NSDictionary *userInfo = [notification userInfo];
-    
-    if ([audio_engine_ref isRunning])
-    {
-        NSInteger typeValue = [[userInfo objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
-        AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)typeValue;
-        if (type)
-        {
-            if (type == AVAudioSessionInterruptionTypeBegan)
-            {
-                if (_wasPlaying)
-                {
-                    //                    [ToneGenerator.sharedGenerator stop];
-                    [self.playButton setImage:[UIImage systemImageNamed:@"pause"] forState:UIControlStateNormal];
-                }
-            } else if (type == AVAudioSessionInterruptionTypeEnded)
-            {
-                //                NSInteger optionsValue = [[userInfo objectForKey:AVAudioSessionInterruptionOptionKey] unsignedIntegerValue];
-                //                AVAudioSessionInterruptionOptions options = (AVAudioSessionInterruptionOptions)optionsValue;
-                //                if (options == AVAudioSessionInterruptionOptionShouldResume)
-                //                {
-                if (_wasPlaying)
-                {
-                    //                    [ToneGenerator.sharedGenerator start];
-                    [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
-                }
-                //                }
-            }
-        }
+    static BOOL _wasPlaying;
+    NSInteger typeValue = [[[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
+    AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)typeValue;
+    if (type == AVAudioSessionInterruptionTypeBegan) ^{ _wasPlaying = [audio_engine_ref isRunning]; if (_wasPlaying) [self toggleToneGenerator:self.playButton]; }();
+    else if (type == AVAudioSessionInterruptionTypeEnded) ^{ if (_wasPlaying) ^{ [self toggleToneGenerator:self.playButton]; _wasPlaying = FALSE; }(); }();
+//
+//    [self updateWatchConnectivityStatus];
+//    [self updateDeviceStatus];
     }
-    
-    [self updateWatchConnectivityStatus];
-    [self updateDeviceStatus];
-}
 
 @end
 

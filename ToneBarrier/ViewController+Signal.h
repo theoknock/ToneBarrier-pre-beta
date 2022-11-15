@@ -14,10 +14,26 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+static Float32 (^scale)(Float32, Float32, Float32, Float32, Float32) = ^ Float32 (Float32 val_old, Float32 min_new, Float32 max_new, Float32 min_old, Float32 max_old) {
+    Float32 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
+    
+    return val_new;
+};
+
+static Float32 (^(^normalized_random_generator)(void))(void) = ^{
+    srand48((unsigned int)time(0));
+    static Float32 random;
+    return ^ (Float32 * random_t) {
+        return ^ Float32 {
+            return (*random_t = (drand48()));
+        };
+    }(&random);
+};
+
 static const float high_frequency = 1750.0;
 static const float low_frequency  = 500.0;
-//static const float min_duration   = 0.25;
-//static const float max_duration   = 2.00;
+static const float low_duration   = 0.25;
+static const float high_duration   = 2.00;
 
 double frequency[2];
 NSInteger alternate_channel_flag;
@@ -36,7 +52,7 @@ static typeof(GKGaussianDistribution *) frequency_distributor_ref = NULL;
 static typeof(frequency_distributor_ref) (^frequency_distributor)(void) = ^{
     static dispatch_once_t onceSecurePredicate;
     dispatch_once(&onceSecurePredicate, ^{
-        frequency_distributor_ref = [[GKGaussianDistribution alloc] initWithRandomSource:randomizer() mean:(high_frequency / .75) deviation:low_frequency];
+        frequency_distributor_ref = [[GKGaussianDistribution alloc] initWithRandomSource:randomizer_ref mean:(high_frequency / .75) deviation:low_frequency];
     });
     return frequency_distributor_ref;
 };
@@ -45,7 +61,7 @@ static typeof(GKGaussianDistribution *) duration_distributor_ref = NULL;
 static typeof(duration_distributor_ref) (^duration_distributor)(void) = ^{
     static dispatch_once_t onceSecurePredicate;
     dispatch_once(&onceSecurePredicate, ^{
-        duration_distributor_ref = [[GKGaussianDistribution alloc] initWithRandomSource:randomizer_ref mean:(high_frequency / .75) deviation:low_frequency];
+        duration_distributor_ref = [[GKGaussianDistribution alloc] initWithRandomSource:randomizer_ref mean:1.0 deviation:.75];
     });
     return duration_distributor_ref;
 };
@@ -69,8 +85,10 @@ static void (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
+        randomizer();
         frequency_distributor();
         duration_distributor();
+        Float32 (^generate_normalized_random)(void) = normalized_random_generator();
         
 //        void(^sample_tone)(void) =
 //        ^{
@@ -103,9 +121,12 @@ static void (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format)
 //            printf("%lu\n", (*((sample_tone_function_t)(active_tone)))(24));
 //        };
         
+        
+        
         buffer_signal = ^ (AVAudioPlayerNode * player_node) {
             ^ (float frequency_right, float frequency_left) {
-                audio_buffer_ref.frameLength = frame_count;
+                audio_buffer_ref.frameLength = frame_count;// * (AVAudioFrameCount)[duration_distributor_ref nextInt];
+                Float32 duration = scale(scale(generate_normalized_random(), 0.25, 1.75, 0.0, 1.0), 0.0, frame_count, 0.25, 1.75);
                 float *left_channel  = audio_buffer_ref.floatChannelData[0];
                 float *right_channel = (buffer_format.channelCount == 2) ? audio_buffer_ref.floatChannelData[1] : nil;
 //
@@ -132,8 +153,10 @@ static void (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format)
                     // The order of evaluation is:
                     //          - The calculations that spatially orients each tone should be applied to each channel first
                     Float32 amplitude_signal = NormalizedSineEaseInOut(normalized_index, amplitude_frequency);
-                    if (left_channel)  left_channel[index]  = (NormalizedSineEaseInOut(normalized_index, frequency_left)  * amplitude_signal);
-                    if (right_channel) right_channel[index] = (NormalizedSineEaseInOut(normalized_index, frequency_right) * amplitude_signal); // fade((leading_fade == FadeOut) ? FadeIn : leading_fade, normalized_index, (SineEaseInOutFrequency(normalized_index, frequencyRight) * NormalizedSineEaseInOutAmplitude((1.0 - normalized_index), 1)));
+                    Float32 tone_a = (NormalizedSineEaseInOut(normalized_index, frequency_left)  * amplitude_signal);
+                    Float32 tone_b = (NormalizedSineEaseInOut(normalized_index, frequency_right)  * amplitude_signal);
+                    if (left_channel)  left_channel[index]  = tone_a * (index <= duration);
+                    if (right_channel) right_channel[index] = tone_b * (index > duration);
                 }
             }([frequency_distributor_ref nextInt], [frequency_distributor_ref nextInt]);
             
