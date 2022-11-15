@@ -39,6 +39,9 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    [self.playButton setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateSelected];
+    [self.playButton setImage:[UIImage systemImageNamed:@"play"]  forState:UIControlStateNormal];
+    
     [[NSNotificationCenter defaultCenter] postNotificationName:UIDeviceBatteryLevelDidChangeNotification object:self];
     
     // HealthKit
@@ -298,13 +301,13 @@ static void (^drawPathToChannelPathLayer)(CAShapeLayer *, UIBezierPath *, UIColo
 
 - (void)session:(WCSession *)session didReceiveApplicationContext:(NSDictionary<NSString *,id> *)applicationContext
 {
-    [self toggleToneGenerator:nil];
+    [self toggleToneGenerator:self.playButton];
     [self updateDeviceStatus];
 }
 
 - (void)session:(WCSession *)session didReceiveMessage:(NSDictionary<NSString *,id> *)message replyHandler:(void (^)(NSDictionary<NSString *,id> * _Nonnull))replyHandler
 {
-    [self toggleToneGenerator:nil];
+    [self toggleToneGenerator:self.playButton];
     [self updateDeviceStatus];
     replyHandler(deviceStatus(self->_device));
 }
@@ -508,19 +511,14 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        __autoreleasing NSError * error = nil;
-        [sender setImage:[UIImage systemImageNamed:((![audio_engine_ref isRunning]) && [audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error) || (^ bool { [audio_engine_ref pause]; __autoreleasing NSError * error = nil; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error]; }()) ? @"stop" : @"play"] forState:UIControlStateNormal];
-        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_l pause]; [player_node_ref_l reset]; }() : ^{ [player_node_ref_l prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_l play]; }();
-        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play];
-            if (player_node_ref_r) buffer_signal(player_node_ref_r);
-            if (player_node_ref_r) buffer_signal(player_node_ref_l);
-        }();
+    dispatch_barrier_async(dispatch_get_main_queue(), ^{
+        __block NSError * error = nil;
+        //    [sender setImage:[UIImage systemImageNamed:((![audio_engine_ref isRunning]) && [audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error) || (^ bool { [audio_engine_ref pause]; __autoreleasing NSError * error = nil; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error]; }()) ? @"stop" : @"play"] forState:UIControlStateNormal];
+        ((![audio_engine_ref isRunning]) && ([audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error)) || (^ bool { [audio_engine_ref pause]; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error] && !error; })();
+        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play]; (![player_node_ref_r isPlaying]) ?: buffer_signal(player_node_ref_r); }();
+        [sender setSelected:([player_node_ref_r isPlaying])];
     });
 }
-//    });
-//    [self updateDeviceStatus];
-//}
 
 
 - (void)handleInterruption:(NSNotification *)notification
