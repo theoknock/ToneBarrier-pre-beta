@@ -78,7 +78,7 @@
     //    [pathLayerChannelL setBorderWidth:0.25];
     //    [self.view.layer addSublayer:pathLayerChannelL];
     
-//    ToneGenerator.sharedGenerator.toneWaveRendererDelegate = self;
+    //    ToneGenerator.sharedGenerator.toneWaveRendererDelegate = self;
     
     [(AppDelegate *)[[UIApplication sharedApplication] delegate] setDeviceStatusInterfaceDelegate:(id<DeviceStatusInterfaceDelegate>)self];
     [self setupDeviceMonitoring];
@@ -509,92 +509,20 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
-    __autoreleasing NSError * error = nil;
-    (((![audio_engine_ref isRunning]) && [audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error) || (^ bool { [audio_engine_ref pause]; __autoreleasing NSError * error = nil; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error]; }()));
-    (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_l pause]; [player_node_ref_l reset]; }() : ^{ [player_node_ref_l prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_l play]; }();
-    (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play];
-        if (player_node_ref_r)
-        {
-            [player_node_ref_r scheduleBuffer:buffer_signal() atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-                if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) NSLog(@"player_node_ref_r: AVAudioPlayerNodeCompletionDataPlayedBack\n");
-                // make player_node scheduleBuffer... recursive
-                NSLog(@"audio_engine_ref.isRunning %d", [audio_engine_ref isRunning]);
-            }];
-            
-//            [player_node_ref_l scheduleBuffer:buffer_signal() atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-//                if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) NSLog(@"player_node_ref_l: AVAudioPlayerNodeCompletionDataPlayedBack\n");
-//            }];
-        }
-    }();
-    NSLog(@"buffer_signal %@", buffer_signal());
-    NSLog(@"player_node_ref_r.isPlaying %d", [player_node_ref_r isPlaying]);
-    NSLog(@"toggleToneGenerator error: %@", error.debugDescription);
-    
     dispatch_async(dispatch_get_main_queue(), ^{
-        if ([audio_engine_ref isRunning]) {
-            [self.playButton setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateNormal];
-        } else if (![audio_engine_ref isRunning]) {
-            [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
-        }
+        __autoreleasing NSError * error = nil;
+        [sender setImage:[UIImage systemImageNamed:((![audio_engine_ref isRunning]) && [audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error) || (^ bool { [audio_engine_ref pause]; __autoreleasing NSError * error = nil; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error]; }()) ? @"stop" : @"play"] forState:UIControlStateNormal];
+        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_l pause]; [player_node_ref_l reset]; }() : ^{ [player_node_ref_l prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_l play]; }();
+        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play];
+            if (player_node_ref_r) buffer_signal(player_node_ref_r);
+            if (player_node_ref_r) buffer_signal(player_node_ref_l);
+        }();
     });
-    
-    
-    
-//    (*(typeof(audio_running_state_func_t))((current_audio_running_state_func = (audio_running_state_func_t)(void *)(uintptr_t)((uintptr_t)(stop_audio_t) ^ (uintptr_t)(start_audio_t) ^ (uintptr_t)(current_audio_running_state_func)))))(0);
-//    //    dispatch_async(dispatch_get_main_queue(), ^{
-//    if (audio_engine_ref.running) {
-//        [audio_engine_ref pause];
-//        [ToneGenerator.sharedGenerator stop];
-//        [sender setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
-//        NSLog(@"Was running; isn't now...");
-//    } else {
-//        [ToneGenerator.sharedGenerator start];
-//
-//        [audio_engine_ref startAndReturnError:nil];
-//
-//        if (![ToneGenerator.sharedGenerator.playerOneNode isPlaying] || ![ToneGenerator.sharedGenerator.playerTwoNode isPlaying])
-//        {
-//            [ToneGenerator.sharedGenerator.playerOneNode play];
-//            [ToneGenerator.sharedGenerator.playerTwoNode play];
-//        }
-//
-//        if (ToneGenerator.sharedGenerator.playerOneNode)
-//        {
-//            ClicklessTones *tones = [[ClicklessTones alloc] init];
-//            [ToneBarrierPlayer.context setPlayer:(id<ToneBarrierPlayerDelegate> _Nonnull)tones];
-//            [ToneBarrierPlayer.context createAudioBufferWithFormat:[ToneGenerator.sharedGenerator.mixerNode outputFormatForBus:0] completionBlock:^(AVAudioPCMBuffer * _Nonnull buffer1, AVAudioPCMBuffer * _Nonnull buffer2, PlayToneCompletionBlock playToneCompletionBlock) {
-//
-//                [ToneGenerator.sharedGenerator.playerOneNode scheduleBuffer:buffer1 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-//                    //                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
-//                    //                        playToneCompletionBlock();
-//                }];
-//
-//                [ToneGenerator.sharedGenerator.playerTwoNode scheduleBuffer:buffer2 atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
-//                    if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack)
-//                        playToneCompletionBlock();
-//                    //                NSLog(@"Calling playToneCompletionBlock 2...");
-//                }];
-//
-//            }];
-//        }
-//    }
-//    [sender setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateNormal];
-//    NSLog(@"Wasn't running; is now...");
 }
 //    });
 //    [self updateDeviceStatus];
 //}
 
-//- (void)togglePlayButton
-//{
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        if ([audio_engine_ref isRunning]) {
-//            [self.playButton setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateNormal];
-//        } else if (![audio_engine_ref isRunning]) {
-//            [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
-//        }
-//    });
-//}
 
 - (void)handleInterruption:(NSNotification *)notification
 {
@@ -612,7 +540,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
             {
                 if (_wasPlaying)
                 {
-//                    [ToneGenerator.sharedGenerator stop];
+                    //                    [ToneGenerator.sharedGenerator stop];
                     [self.playButton setImage:[UIImage systemImageNamed:@"pause"] forState:UIControlStateNormal];
                 }
             } else if (type == AVAudioSessionInterruptionTypeEnded)
@@ -623,7 +551,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
                 //                {
                 if (_wasPlaying)
                 {
-//                    [ToneGenerator.sharedGenerator start];
+                    //                    [ToneGenerator.sharedGenerator start];
                     [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
                 }
                 //                }
