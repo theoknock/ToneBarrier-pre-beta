@@ -511,12 +511,10 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
-    dispatch_barrier_async(dispatch_get_main_queue(), ^{
+    ({
         __block NSError * error = nil;
-        //    [sender setImage:[UIImage systemImageNamed:((![audio_engine_ref isRunning]) && [audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error) || (^ bool { [audio_engine_ref pause]; __autoreleasing NSError * error = nil; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error]; }()) ? @"stop" : @"play"] forState:UIControlStateNormal];
         ((![audio_engine_ref isRunning]) && ([audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error)) || (^ bool { [audio_engine_ref pause]; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error] && !error; })();
-        (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play]; (![player_node_ref_r isPlaying]) ?: buffer_signal(player_node_ref_r); }();
-        [sender setSelected:([player_node_ref_r isPlaying])];
+        [sender setSelected:^ bool { ({ (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play]; buffer_signal(player_node_ref_r); }(); }); return ([player_node_ref_r isPlaying]); }() ];
     });
 }
 
@@ -524,8 +522,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 - (void)handleInterruption:(NSNotification *)notification
 {
     static BOOL _wasPlaying;
-    NSInteger typeValue = [[[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
-    AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)typeValue;
+    AVAudioSessionInterruptionType type = (AVAudioSessionInterruptionType)[[[notification userInfo] objectForKey:AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
     if (type == AVAudioSessionInterruptionTypeBegan) ^{ _wasPlaying = [audio_engine_ref isRunning]; if (_wasPlaying) [self toggleToneGenerator:self.playButton]; }();
     else if (type == AVAudioSessionInterruptionTypeEnded) ^{ if (_wasPlaying) ^{ [self toggleToneGenerator:self.playButton]; _wasPlaying = FALSE; }(); }();
 //

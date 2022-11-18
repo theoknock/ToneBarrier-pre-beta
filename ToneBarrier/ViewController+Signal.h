@@ -20,6 +20,11 @@ static Float32 (^scale)(Float32, Float32, Float32, Float32, Float32) = ^ Float32
     return val_new;
 };
 
+static Float32 (^normalize_value)(Float32, Float32, Float32) = ^Float32(Float32 min, Float32 max, Float32 value) {
+    Float32 result = (value - min) / (max - min);
+    return result;
+};
+
 static Float32 (^(^normalized_random_generator)(void))(void) = ^{
     srand48((unsigned int)time(0));
     static Float32 random;
@@ -50,20 +55,20 @@ static void (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format)
         //      - Modulate amplitude of each tone based on pitch (slow or fast)
         //      - Modulate amplitude of tone pair (rise and fall)
         
-        signal_sample = ^ (AVAudioFrameCount frame_start, AVAudioFrameCount frame_length, AVAudioFrameCount frame_count, Float32 * channel) {
+        signal_sample = ^ (AVAudioFrameCount frame_start, AVAudioFrameCount frame_split, AVAudioFrameCount frame_end, Float32 * channel) {
             __block Float32 frequency_theta = 0.f;
             const Float32 frequency = scale(generate_normalized_random(), 440.0, 3000.0, 0.0, 1.0);
             Float32 frequency_theta_increment = DBL_M_PI * frequency / buffer_format.sampleRate;
-            
-            __block Float32 amplitude_theta = 0.f;
-            const Float32 amplitude = scale(generate_normalized_random(), 0.f, 2.f, 0.0, 1.0);
-            Float32 amplitude_theta_increment = DBL_M_PI * .5f / buffer_format.sampleRate;
-            
-            for (AVAudioFrameCount frame = frame_start; frame < frame_count; frame++)
+
+            for (AVAudioFrameCount frame = frame_start; frame < frame_split; frame++)
             {
-                channel[frame] = sinf(frequency_theta += frequency_theta_increment) * sinf(amplitude_theta += amplitude_theta_increment); // increment amplitude from 0 to 1 based on number of frames (more frames means less increment)
+                channel[frame] = sinf(frequency_theta += frequency_theta_increment) * (.5f * (1.f * cosf((2.f * M_PI * normalize_value(frame_start, frame_end, frame)) / 2.f))); // 4.f covers the entire two-second tone pair; 2.f assumes the split frame evenly divides the duration between the two tones (one second each)
                 !(frequency_theta > DBL_M_PI) ?: (frequency_theta -= DBL_M_PI);
-                !(amplitude_theta > DBL_M_PI) ?: (amplitude_theta -= DBL_M_PI);
+            }
+            for (AVAudioFrameCount frame = ++frame_split; frame < frame_end; frame++)
+            {
+                channel[frame] = sinf(frequency_theta += frequency_theta_increment) * (.5f * (1.f * cosf((2.f * M_PI * normalize_value(frame_start, frame_end, frame)) / 2.f))); // 4.f covers the entire two-second tone pair; 2.f assumes the split frame evenly divides the duration between the two tones (one second each)
+                !(frequency_theta > DBL_M_PI) ?: (frequency_theta -= DBL_M_PI);
             }
         };
         
@@ -71,10 +76,8 @@ static void (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format)
             Float32 left_duration = scale(scale(generate_normalized_random(), 0.25, 1.75, 0.0, 1.0), 0.0, frame_count, 0.25, 1.75);
             Float32 right_duration = scale(scale(generate_normalized_random(), 0.25, 1.75, 0.0, 1.0), 0.0, frame_count, 0.25, 1.75);
            
-            signal_sample(0, frame_count * 0.25f, frame_count, audio_buffer_ref.floatChannelData[0]);
-            signal_sample(frame_count * 0.75f, frame_count, frame_count, audio_buffer_ref.floatChannelData[0]);
-            signal_sample(0, frame_count * 0.4f, frame_count, audio_buffer_ref.floatChannelData[1]);
-            signal_sample(frame_count * 0.6f, frame_count, frame_count, audio_buffer_ref.floatChannelData[1]);
+            signal_sample(0, frame_count, frame_count, audio_buffer_ref.floatChannelData[0]);
+            signal_sample(0, frame_count, frame_count, audio_buffer_ref.floatChannelData[1]);
             
             [player_node scheduleBuffer:audio_buffer_ref atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
                 if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) if ([player_node isPlaying]) buffer_signal(player_node);
