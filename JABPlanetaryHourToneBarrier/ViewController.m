@@ -514,7 +514,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
     ({
         __block NSError * error = nil;
         ((![audio_engine_ref isRunning]) && ([audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error)) || (^ bool { [audio_engine_ref pause]; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error] && !error; })();
-        [sender setSelected:^ bool { ({ (![audio_engine_ref isRunning]) ? ^{ [player_node_ref_r pause]; [player_node_ref_r reset]; }() : ^{ [player_node_ref_r prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref_r play]; buffer_signal(player_node_ref_r); }(); }); return ([player_node_ref_r isPlaying]); }() ];
+        [sender setSelected:^ bool { ({ (![audio_engine_ref isRunning]) ? ^{ [player_node_ref pause]; [player_node_ref reset]; }() : ^{ [player_node_ref prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref play]; buffer_signal(player_node_ref); }(); }); return ([player_node_ref isPlaying]); }() ];
     });
 }
 
