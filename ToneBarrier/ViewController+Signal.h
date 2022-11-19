@@ -17,35 +17,35 @@
 NS_ASSUME_NONNULL_BEGIN
 
 #define PI 3.1415926535897932384626
-#define EULER 2.71828183
+#define D_PI simd_make_double2(2.f * M_PI)
 
-static Float32 (^scale)(Float32, Float32, Float32, Float32, Float32) = ^ Float32 (Float32 val_old, Float32 min_new, Float32 max_new, Float32 min_old, Float32 max_old) {
-    Float32 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
+static double (^scale)(double, double, double, double, double) = ^ double (double val_old, double min_new, double max_new, double min_old, double max_old) {
+    double val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
     
     return val_new;
 };
 
-static Float32 (^normalize_value)(Float32, Float32, Float32) = ^Float32(Float32 min, Float32 max, Float32 value) {
-    Float32 result = (value - min) / (max - min);
+static double (^normalize_value)(double, double, double) = ^double(double min, double max, double value) {
+    double result = (value - min) / (max - min);
     return result;
 };
 
-static Float32 (^(^normalized_random_generator)(void))(void) = ^{
+static double (^(^normalized_random_generator)(void))(void) = ^{
     srand48((unsigned int)time(0));
-    static Float32 random;
-    return ^ (Float32 * random_t) {
-        return ^ Float32 {
+    static double random;
+    return ^ (double * random_t) {
+        return ^ double {
             return (*random_t = (drand48()));
         };
     }(&random);
 };
 
-typedef typeof(Float32(^)(void)) random_generator;
-typedef typeof(Float32(^(* restrict))(void)) random_n_t;
-static Float32 (^(^(^(^generate_random)(Float32(^)(void)))(Float32(^)(Float32)))(Float32(^)(Float32)))(void) = ^ (Float32(^randomize)(void)) {
-    return ^ (Float32(^distribute)(Float32)) {
-        return ^ (Float32(^scale)(Float32)) {
-            return ^ Float32 {
+typedef typeof(double(^)(void)) random_generator;
+typedef typeof(double(^(* restrict))(void)) random_n_t;
+static double (^(^(^(^generate_random)(double(^)(void)))(double(^)(double)))(double(^)(double)))(void) = ^ (double(^randomize)(void)) {
+    return ^ (double(^distribute)(double)) {
+        return ^ (double(^scale)(double)) {
+            return ^ double {
                 return scale(distribute(randomize()));
             };
         };
@@ -113,75 +113,38 @@ typedef NS_ENUM(unsigned int, MusicalNoteFrequency) {
 //}  musical_note = { .note_frequency = { MusicalNoteFrequencyA, MusicalNoteFrequencyBFlat, MusicalNoteFrequencyB, MusicalNoteFrequencyC, MusicalNoteFrequencyCSharp, MusicalNoteFrequencyD, MusicalNoteFrequencyDSharp, MusicalNoteFrequencyE, MusicalNoteFrequencyF, MusicalNoteFrequencyFSharp, MusicalNoteFrequencyG, MusicalNoteFrequencyAFlat } };
 
 static unsigned int counter = 0;
-static Float32 (^tonal_interval)(TonalInterval) = ^ Float32 (TonalInterval interval) {
-    Float32 consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
+static double (^tonal_interval)(TonalInterval) = ^ double (TonalInterval interval) {
+    double consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
     return consonant_harmonic_interval_ratios[interval % TonalIntervalDefault];
 };
 
-const Float32 DBL_PI = 2.f * PI;
-
 static typeof(AVAudioPCMBuffer *) audio_buffer_ref = NULL;
 
-static Float32 (^generate_normalized_random)(void);
+static double (^generate_normalized_random)(void);
 static random_generator random_musical_note_generator;
 
-static void (^signal_sample)(Float32 * channel_l, Float32 * channel_r, AVAudioFrameCount buffer_length) = ^ (Float32 * channel_l, Float32 * channel_r, AVAudioFrameCount buffer_length) {
-    static Float32 frequency_theta[2][2], frequencies[2][2], frequency_theta_increment[2][2];
+static void (^signal_sample)(Float32 * _Nonnull _Nonnull channel_data[], AVAudioFrameCount buffer_length) = ^ (Float32 * _Nonnull channel_data[], AVAudioFrameCount buffer_length) {
     AVAudioFrameCount frame = 0;
     AVAudioFrameCount * frame_t = &frame;
-    Float32 normalized_index = 0.f;
-    Float32 * normalized_index_t = &normalized_index;
-    Float32 o[2], v[2], u[2];
-    //    ({
-    frequencies[0][0] = random_musical_note_generator();
-    frequency_theta_increment[0][0] = DBL_PI * frequencies[0][0] / audio_buffer_ref.format.sampleRate;
-    frequencies[0][1] = random_musical_note_generator();
-    frequency_theta_increment[0][1] = DBL_PI * frequencies[0][1] / audio_buffer_ref.format.sampleRate;
-    simd_double2 frequency_theta_v = simd_make_double2(frequency_theta[0][0], frequency_theta[0][1]);
-    simd_double2 frequency_theta_increment_v = simd_make_double2(frequency_theta_increment[0][0], frequency_theta_increment[0][1]);
+    double normalized_index = 0.f;
+    double * normalized_index_t = &normalized_index;
     
-    o[0] = 0.4f;
-    v[0] = 0.9; // variance [width] (values lower than 0.15 increase amplitude)
-    u[0] = 0.5f; // mean [shift] (variance / 2)
-    
-    frequencies[1][0] = random_musical_note_generator();
-    frequency_theta_increment[1][0] = DBL_PI * frequencies[1][0] / audio_buffer_ref.format.sampleRate;
-    frequencies[1][1] = random_musical_note_generator();
-    frequency_theta_increment[1][1] = DBL_PI * frequencies[1][1] / audio_buffer_ref.format.sampleRate;
-    o[1] = 0.4f;
-    v[1] = 0.9; // variance [width] (values lower than 0.15 increase amplitude)
-    u[1] = 0.5f; // mean [shift]
-    //    });
-    //    ({
-    
-    for (; *frame_t < buffer_length; *frame_t += 1)
+    simd_double2 frequency_theta_v = simd_make_double2(0.0, 0.0);
+    simd_double2 frequencies_v = simd_make_double2(random_musical_note_generator());
+    simd_double2 frequency_theta_increment_v = simd_make_double2(D_PI * frequencies_v / simd_make_double2(buffer_length));
+   
+    for (*frame_t; *frame_t < buffer_length; *frame_t += 1)
     {
-        ({ *normalized_index_t = (*frame_t / buffer_length); });
-        
-        Float32 tone_pair_1_envelope = (1.f/(o[0] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[0], 2.f) / (pow(2.f * v[0], 2.f))));
-        simd_double2 tone_v = simd_make_double2(_simd_sin_d2(frequency_theta_v += frequency_theta_increment_v));
-        Float32 tone_pair_1 = (tone_v[0] + (0.1 - (*normalized_index_t * 0.5f)) * (tone_v[1] - tone_v[0]));
-        !(frequency_theta_v[0] > DBL_PI) ?: (frequency_theta_v[0] -= DBL_PI);
-        !(frequency_theta_v[1] > DBL_PI) ?: (frequency_theta_v[1] -= DBL_PI);
-        
-        Float32 tone_pair_2_envelope = (1.f/(o[1] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[1], 2.f) / (pow(2.f * v[1], 2.f))));
-        Float32 tone_a2 = sinf(frequency_theta[1][0] += frequency_theta_increment[1][0]);
-        Float32 tone_b2 = sinf(frequency_theta[1][1] += frequency_theta_increment[1][1]);
-        Float32 tone_pair_2 = (tone_a2 + (0.5f * (tone_b2 - tone_a2)));
-        !(frequency_theta[1][0] > DBL_PI) ?: (frequency_theta[1][0] -= DBL_PI);
-        !(frequency_theta[1][1] > DBL_PI) ?: (frequency_theta[1][1] -= DBL_PI);
-        
-        Float32 tone_pair_dyad_1 = (tone_pair_1 + (0.5 * (tone_pair_2 - tone_pair_1))); // what would a gaussian distribution curve look like if the first tone pair played at a balance of 1.0 and the second played at 0.0, but then swapped halfway
-        
-        channel_l[*frame_t] = tone_pair_1;
-        //            channel_r[*frame_t] = tone_pair_dyad_1;
+        simd_double2 tone_v = _simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)));
+        !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
+
+        channel_data[0][*frame_t] = (Float32)tone_v[0];
     }
-    //    });
 };
 
 static typeof(void (^)(void)) buffer_signal = ^{
     NSLog(@"%s", __PRETTY_FUNCTION__);
-    signal_sample(audio_buffer_ref.floatChannelData[0], audio_buffer_ref.floatChannelData[1], audio_buffer_ref.frameLength);
+    signal_sample(audio_buffer_ref.floatChannelData, audio_buffer_ref.frameLength);
     [player_node_ref scheduleBuffer:audio_buffer_ref atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
         if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) if ([player_node_ref isPlaying]) buffer_signal();
         NSLog(@"AVAudioPlayerNodeCompletionDataPlayedBack\n");
@@ -195,9 +158,9 @@ static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFor
         audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
         audio_buffer_ref.frameLength = frame_count;
         generate_normalized_random = normalized_random_generator();
-        random_musical_note_generator = generate_random(generate_normalized_random)(^ Float32 (Float32 n) { return n; })(^ Float32 (Float32 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+        random_musical_note_generator = generate_random(generate_normalized_random)(^ double (double n) { return n; })(^ double (double n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
     });
-    //        Float32 (^generate_normalized_random)(void) = normalized_random_generator();
+    //        double (^generate_normalized_random)(void) = normalized_random_generator();
     //        static random_generator random_musical_note_generator;
     //        random_musical_note_generator = generate_random(generate_normalized_random)(^ Float32 (Float32 n) { return n; })(^ Float32 (Float32 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
     //        signal_sample = ^ (AVAudioFrameCount frame_start, AVAudioFrameCount frame_split, AVAudioFrameCount frame_end, Float32 * channel_l, Float32 * channel_r) {
