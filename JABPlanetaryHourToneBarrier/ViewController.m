@@ -7,8 +7,8 @@
 //
 
 #import "ViewController.h"
-#import "ViewController+Audio.h"
 #import "ViewController+Signal.h"
+#import "ViewController+Audio.h"
 #import "AppDelegate.h"
 #import "GraphView.h"
 
@@ -91,6 +91,7 @@
     
     audio_session();
     audio_engine();
+//    player_node();
     audio_buffer([audio_engine_ref.mainMixerNode outputFormatForBus:0]);
     
 }
@@ -511,11 +512,40 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
 
 - (IBAction)toggleToneGenerator:(UIButton *)sender
 {
-    ({
-        __block NSError * error = nil;
-        ((![audio_engine_ref isRunning]) && ([audio_session_ref setActive:[audio_engine_ref startAndReturnError:&error] error:&error] && !error)) || (^ bool { [audio_engine_ref stop]; return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:&error] && !error; })();
-        [sender setSelected:^ bool { ({ (![audio_engine_ref isRunning]) ? ^{ [player_node_ref pause]; [player_node_ref reset]; }() : ^{ [player_node_ref prepareWithFrameCount:[audio_buffer_ref frameCapacity]]; [player_node_ref play]; buffer_signal(player_node_ref); }(); }); return ([player_node_ref isPlaying]); }() ];
-    });
+    __block NSError *audio_engine_error = nil;
+    __block NSError *audio_session_error = nil;
+    
+    ((![audio_engine_ref isRunning])
+     && ^ bool (NSError ** audio_engine_error_t, NSError ** audio_session_error_t) {
+        return [audio_session_ref setActive:[audio_engine_ref startAndReturnError:audio_engine_error_t] error:audio_session_error_t];// && !(*audio_engine_error_t) && !(*audio_session_error_t);
+    }(&audio_engine_error, &audio_session_error))
+    || (^ bool (NSError ** audio_engine_error_t, NSError ** audio_session_error_t) {
+        [audio_engine_ref pause];
+        return ![audio_session_ref setActive:[audio_engine_ref isRunning] error:audio_session_error_t];
+    }(&audio_engine_error, &audio_session_error));
+    printf("\nAudio session is %s\n", (audio_engine_ref.isRunning) ? "running." : "not running.");
+    [sender setSelected:^ bool {
+        ([audio_engine_ref isRunning]) ? ^{
+            [player_node_ref prepareWithFrameCount:[audio_buffer_ref frameCapacity]];
+            [player_node_ref play];
+        }() : ^{
+            [player_node_ref pause];
+            [player_node_ref reset];
+        }();
+        return [player_node_ref isPlaying];
+    }()];
+    printf("\nPlayer node is %s\n", (player_node_ref.isPlaying) ? "playing." : "not playing.");
+    if (player_node_ref.isPlaying) buffer_signal();
+    else printf("Error calling buffer_signal\n");
+    if (audio_engine_error || audio_session_error)
+    ^{
+        printf("Audio engine start error:\n\t%s\n", [[audio_engine_error debugDescription] UTF8String]);
+        NSException * exception = [NSException
+                                  exceptionWithName:audio_engine_error.domain
+                                  reason:audio_engine_error.localizedDescription
+                                  userInfo:@{@"Error Code" : @(audio_engine_error.code)}];
+        printf("Audio session activation error:\n\t%s\n", [[audio_session_error debugDescription] UTF8String]);
+    }();
 }
 
 

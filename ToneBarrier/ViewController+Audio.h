@@ -12,7 +12,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 static typeof(AVAudioPlayerNode *) player_node_ref = NULL;
-static AVAudioPlayerNode * (^player_node)(void) = ^{
+static typeof(player_node_ref) (^player_node)(void) = ^{
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         player_node_ref = [[AVAudioPlayerNode alloc] init];
@@ -29,7 +29,10 @@ static typeof(audio_engine_ref) (^audio_engine)(void) = ^{
     static dispatch_once_t onceSecurePredicate;
     dispatch_once(&onceSecurePredicate, ^{
         audio_engine_ref = [[AVAudioEngine alloc] init];
-        player_node();
+        player_node_ref = [[AVAudioPlayerNode alloc] init];
+        [player_node_ref setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
+        [player_node_ref setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
+        [player_node_ref setPosition:AVAudioMake3DPoint(0.0, 0.0, 0.0)];
     });
     
     [audio_engine_ref attachNode:player_node_ref];
@@ -85,8 +88,7 @@ static typeof(audio_session_ref) (^audio_session)(void) = ^ AVAudioSession * {
     return audio_session_ref;
 };
 
-@interface ViewController ()
-
+@interface ViewController (Audio)
 @end
 
 NS_ASSUME_NONNULL_END
