@@ -12,6 +12,7 @@
 #import <GameKit/GameKit.h>
 
 #include "easing.h"
+#include <math.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -125,56 +126,57 @@ static Float32 (^generate_normalized_random)(void);
 static random_generator random_musical_note_generator;
 
 static void (^signal_sample)(Float32 * channel_l, Float32 * channel_r, AVAudioFrameCount buffer_length) = ^ (Float32 * channel_l, Float32 * channel_r, AVAudioFrameCount buffer_length) {
-    Float32 frequency_theta[2][2], frequencies[2][2], frequency_theta_increment[2][2];
-    AVAudioFrameCount split_frame = 1200;//scale(scale(generate_normalized_random(), 0.5, 1.75, 0.0, 1.0), 0.0, 1.0, 0.5, 1.75); // To-Do: Use a gaussian distribution to scale the normalized duration
+    static Float32 frequency_theta[2][2], frequencies[2][2], frequency_theta_increment[2][2];
     AVAudioFrameCount frame = 0;
     AVAudioFrameCount * frame_t = &frame;
     Float32 normalized_index = 0.f;
     Float32 * normalized_index_t = &normalized_index;
     Float32 o[2], v[2], u[2];
-    ({
-        frequencies[0][0] = random_musical_note_generator();
-        frequency_theta_increment[0][0] = DBL_PI * frequencies[0][0] / audio_buffer_ref.format.sampleRate;
-        frequencies[0][1] = random_musical_note_generator();
-        frequency_theta_increment[0][1] = DBL_PI * frequencies[0][1] / audio_buffer_ref.format.sampleRate;
-        o[0] = 0.2f;
-        v[0] = 0.25; // variance (width)
-        u[0] = 0.25f; // mean [shift] (variance / 2)
+    //    ({
+    frequencies[0][0] = random_musical_note_generator();
+    frequency_theta_increment[0][0] = DBL_PI * frequencies[0][0] / audio_buffer_ref.format.sampleRate;
+    frequencies[0][1] = random_musical_note_generator();
+    frequency_theta_increment[0][1] = DBL_PI * frequencies[0][1] / audio_buffer_ref.format.sampleRate;
+    simd_double2 frequency_theta_v = simd_make_double2(frequency_theta[0][0], frequency_theta[0][1]);
+    simd_double2 frequency_theta_increment_v = simd_make_double2(frequency_theta_increment[0][0], frequency_theta_increment[0][1]);
+    
+    o[0] = 0.4f;
+    v[0] = 0.9; // variance [width] (values lower than 0.15 increase amplitude)
+    u[0] = 0.5f; // mean [shift] (variance / 2)
+    
+    frequencies[1][0] = random_musical_note_generator();
+    frequency_theta_increment[1][0] = DBL_PI * frequencies[1][0] / audio_buffer_ref.format.sampleRate;
+    frequencies[1][1] = random_musical_note_generator();
+    frequency_theta_increment[1][1] = DBL_PI * frequencies[1][1] / audio_buffer_ref.format.sampleRate;
+    o[1] = 0.4f;
+    v[1] = 0.9; // variance [width] (values lower than 0.15 increase amplitude)
+    u[1] = 0.5f; // mean [shift]
+    //    });
+    //    ({
+    
+    for (; *frame_t < buffer_length; *frame_t += 1)
+    {
+        ({ *normalized_index_t = (*frame_t / buffer_length); });
         
-        frequencies[1][0] = random_musical_note_generator();
-        frequency_theta_increment[1][0] = DBL_PI * frequencies[1][0] / audio_buffer_ref.format.sampleRate;
-        frequencies[1][1] = random_musical_note_generator();
-        frequency_theta_increment[1][1] = DBL_PI * frequencies[1][1] / audio_buffer_ref.format.sampleRate;
-        o[1] = 0.2f;
-        v[1] = 0.25; // variance (width)
-        u[1] = 0.75f; // mean [shift]
-    });
-    ({
+        Float32 tone_pair_1_envelope = (1.f/(o[0] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[0], 2.f) / (pow(2.f * v[0], 2.f))));
+        simd_double2 tone_v = simd_make_double2(_simd_sin_d2(frequency_theta_v += frequency_theta_increment_v));
+        Float32 tone_pair_1 = (tone_v[0] + (0.1 - (*normalized_index_t * 0.5f)) * (tone_v[1] - tone_v[0]));
+        !(frequency_theta_v[0] > DBL_PI) ?: (frequency_theta_v[0] -= DBL_PI);
+        !(frequency_theta_v[1] > DBL_PI) ?: (frequency_theta_v[1] -= DBL_PI);
         
-        for (; *frame_t < buffer_length; *frame_t += 1)
-        {
-            ({ *normalized_index_t = *frame_t / buffer_length; });
-            
-            Float32 tone_pair_1_envelope = (1.f/(o[0] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[0], 2.f) / (pow(2.f * v[0], 2.f))));
-            Float32 tone_a1 = sinf(frequency_theta[0][0] += frequency_theta_increment[0][0]);
-            Float32 tone_b1 = sinf(frequency_theta[0][1] += frequency_theta_increment[0][1]);
-            Float32 tone_pair_1 = (tone_a1 + (0.5f * (tone_b1 - tone_a1))) * tone_pair_1_envelope;
-            !(frequency_theta[0][0] > DBL_PI) ?: (frequency_theta[0][0] -= DBL_PI);
-            !(frequency_theta[0][1] > DBL_PI) ?: (frequency_theta[0][1] -= DBL_PI);
-            
-            Float32 tone_pair_2_envelope = (1.f/(o[1] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[1], 2.f) / (pow(2.f * v[1], 2.f))));
-            Float32 tone_a2 = sinf(frequency_theta[1][0] += frequency_theta_increment[1][0]);
-            Float32 tone_b2 = sinf(frequency_theta[1][1] += frequency_theta_increment[1][1]);
-            Float32 tone_pair_2 = (tone_a2 + (0.5f * (tone_b2 - tone_a2))) * tone_pair_2_envelope;
-            !(frequency_theta[1][0] > DBL_PI) ?: (frequency_theta[1][0] -= DBL_PI);
-            !(frequency_theta[1][1] > DBL_PI) ?: (frequency_theta[1][1] -= DBL_PI);
-            
-            Float32 tone_pair_dyad_1 = tone_pair_1 * tone_pair_2;
-            
-            channel_l[*frame_t] = tone_pair_dyad_1;
-//            channel_r[*frame_t] = tone_pair_dyad_1;
-        }
-    });
+        Float32 tone_pair_2_envelope = (1.f/(o[1] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[1], 2.f) / (pow(2.f * v[1], 2.f))));
+        Float32 tone_a2 = sinf(frequency_theta[1][0] += frequency_theta_increment[1][0]);
+        Float32 tone_b2 = sinf(frequency_theta[1][1] += frequency_theta_increment[1][1]);
+        Float32 tone_pair_2 = (tone_a2 + (0.5f * (tone_b2 - tone_a2)));
+        !(frequency_theta[1][0] > DBL_PI) ?: (frequency_theta[1][0] -= DBL_PI);
+        !(frequency_theta[1][1] > DBL_PI) ?: (frequency_theta[1][1] -= DBL_PI);
+        
+        Float32 tone_pair_dyad_1 = (tone_pair_1 + (0.5 * (tone_pair_2 - tone_pair_1))); // what would a gaussian distribution curve look like if the first tone pair played at a balance of 1.0 and the second played at 0.0, but then swapped halfway
+        
+        channel_l[*frame_t] = tone_pair_1;
+        //            channel_r[*frame_t] = tone_pair_dyad_1;
+    }
+    //    });
 };
 
 static typeof(void (^)(void)) buffer_signal = ^{
