@@ -137,44 +137,42 @@ static void (^signal_sample)(Float32 * channel_l, Float32 * channel_r, AVAudioFr
         frequency_theta_increment[0][0] = DBL_PI * frequencies[0][0] / audio_buffer_ref.format.sampleRate;
         frequencies[0][1] = random_musical_note_generator();
         frequency_theta_increment[0][1] = DBL_PI * frequencies[0][1] / audio_buffer_ref.format.sampleRate;
-        o[0] = 0.4f;
-        v[0] = split_frame / buffer_length; // variance (width)
-        u[0] = v[0] / 2.f; // mean [shift] (variance / 2)
+        o[0] = 0.2f;
+        v[0] = 0.25; // variance (width)
+        u[0] = 0.25f; // mean [shift] (variance / 2)
         
         frequencies[1][0] = random_musical_note_generator();
         frequency_theta_increment[1][0] = DBL_PI * frequencies[1][0] / audio_buffer_ref.format.sampleRate;
         frequencies[1][1] = random_musical_note_generator();
         frequency_theta_increment[1][1] = DBL_PI * frequencies[1][1] / audio_buffer_ref.format.sampleRate;
-        o[1] = 0.4f;
-        v[1] = 1.0 - v[0]; // variance (width)
-        u[1] = 1.0 - (v[1] - (v[1] / 2.f)); // mean [shift]
+        o[1] = 0.2f;
+        v[1] = 0.25; // variance (width)
+        u[1] = 0.75f; // mean [shift]
     });
     ({
         
         for (; *frame_t < buffer_length; *frame_t += 1)
         {
-            ({ *normalized_index_t = *frame_t / audio_buffer_ref.format.sampleRate; });
+            ({ *normalized_index_t = *frame_t / buffer_length; });
             
-            Float32 tone_pair_1_envelope = 0.5f; //(1.f/(o[0] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[0], 2.f) / (pow(2.f * v[0], 2.f))));
-            printf("tone_pair_1_envelope == %f\n", tone_pair_1_envelope);
+            Float32 tone_pair_1_envelope = (1.f/(o[0] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[0], 2.f) / (pow(2.f * v[0], 2.f))));
             Float32 tone_a1 = sinf(frequency_theta[0][0] += frequency_theta_increment[0][0]);
             Float32 tone_b1 = sinf(frequency_theta[0][1] += frequency_theta_increment[0][1]);
             Float32 tone_pair_1 = (tone_a1 + (0.5f * (tone_b1 - tone_a1))) * tone_pair_1_envelope;
             !(frequency_theta[0][0] > DBL_PI) ?: (frequency_theta[0][0] -= DBL_PI);
             !(frequency_theta[0][1] > DBL_PI) ?: (frequency_theta[0][1] -= DBL_PI);
             
-            Float32 tone_pair_2_envelope = 0.5f; // rr(1.f/(o[1] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[1], 2.f) / (pow(2.f * v[1], 2.f))));
-            printf("tone_pair_2_envelope == %f\n", tone_pair_2_envelope);
+            Float32 tone_pair_2_envelope = (1.f/(o[1] * sqrtf(2.f * PI))) * (EULER * -(pow(*normalized_index_t - u[1], 2.f) / (pow(2.f * v[1], 2.f))));
             Float32 tone_a2 = sinf(frequency_theta[1][0] += frequency_theta_increment[1][0]);
             Float32 tone_b2 = sinf(frequency_theta[1][1] += frequency_theta_increment[1][1]);
             Float32 tone_pair_2 = (tone_a2 + (0.5f * (tone_b2 - tone_a2))) * tone_pair_2_envelope;
             !(frequency_theta[1][0] > DBL_PI) ?: (frequency_theta[1][0] -= DBL_PI);
             !(frequency_theta[1][1] > DBL_PI) ?: (frequency_theta[1][1] -= DBL_PI);
             
-            Float32 tone_pair_dyad_1 = tone_pair_1 + (0.5f * (tone_pair_2 - tone_pair_1));
+            Float32 tone_pair_dyad_1 = tone_pair_1 * tone_pair_2;
             
             channel_l[*frame_t] = tone_pair_dyad_1;
-            channel_r[*frame_t] = tone_pair_dyad_1;
+//            channel_r[*frame_t] = tone_pair_dyad_1;
         }
     });
 };
