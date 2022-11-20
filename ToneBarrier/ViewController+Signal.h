@@ -124,7 +124,7 @@ static double (^generate_normalized_random)(void);
 volatile random_generator random_musical_note_generator;
 
 static double (^gaussian_distribution)(AVAudioFrameCount, AVAudioFrameCount, double, double, double) = ^ double (AVAudioFrameCount frame, AVAudioFrameCount frames, double mean, double variance, double duration) {
-    double normalized_time = (double)(frame / frames);
+    double normalized_time = (double)((double)frame / (double)frames);
     double j = exp(-((pow((normalized_time - mean), 2.0) / pow(2.f * variance, 2.f)))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
     double scaled_gaussian_distribution = 0.f + (((j - duration) * (1.f - 0.f)) / ((1.f - duration) - 0.f));
     
@@ -135,24 +135,25 @@ static double (^gaussian_distribution)(AVAudioFrameCount, AVAudioFrameCount, dou
 static void (^signal_sample)(float * _Nonnull const * _Nonnull, AVAudioFrameCount) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length) {
     AVAudioFrameCount frame = 0;
     AVAudioFrameCount * frame_t = &frame;
-    static double normalized_frame = 0;
-    __block simd_double2 tone_durations;
+   __block simd_double2 tone_durations;
     simd_double2 * tone_durations_t = &tone_durations;
     __block simd_double2 tones;
     simd_double2 * tones_t = &tones;
     
     __block simd_double2 frequency_theta_v = simd_make_double2(0.0, 0.0);
-    simd_double2 frequency_theta_increment_v = simd_make_double2(fmaxf(0.0, (2.f * M_PI) * random_musical_note_generator() / buffer_length),
-                                                                 fmaxf(0.0, (2.f * M_PI) * random_musical_note_generator() / buffer_length));
+    simd_double2 frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
+                                                                 (2.f * M_PI) * random_musical_note_generator() / buffer_length);
     
     for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
-        normalized_frame = (double)(*frame_t / buffer_length);
-        tone_durations = simd_make_double2(gaussian_distribution(*frame_t, buffer_length, 0.25, 0.0625, 0.2),
-                                           gaussian_distribution(*frame_t, buffer_length, 0.75, 0.0625, 0.8));
-        *tones_t = tone_durations * (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)))));
-        !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-        float_channel_data[0][*frame_t] = (Float32)(*tones_t)[0];
-        float_channel_data[1][*frame_t] = (Float32)(*tones_t)[1];
+        ({
+            tone_durations = simd_make_double2(gaussian_distribution(*frame_t, buffer_length, 0.25, 0.0625, 0.2),
+                                               gaussian_distribution(*frame_t, buffer_length, 0.75, 0.0625, 0.2));
+            tones = tone_durations * (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)))));
+            !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
+            Float32 tone_pair = ((Float32)tones[0] + (0.5f * ((Float32)tones[1] - (Float32)tones[0])));
+            float_channel_data[0][*frame_t] = tone_pair;
+            float_channel_data[1][*frame_t] = tone_pair;
+        });
     }
 };
 
