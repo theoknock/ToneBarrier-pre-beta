@@ -121,25 +121,23 @@ static double (^tonal_interval)(TonalInterval) = ^ double (TonalInterval interva
 static typeof(AVAudioPCMBuffer *) audio_buffer_ref = NULL;
 
 static double (^generate_normalized_random)(void);
-static random_generator random_musical_note_generator;
+volatile random_generator random_musical_note_generator;
 
-static void (^signal_sample)(Float32 * _Nonnull _Nonnull channel_data[], AVAudioFrameCount buffer_length) = ^ (Float32 * _Nonnull channel_data[], AVAudioFrameCount buffer_length) {
+static void (^signal_sample)(float * _Nonnull const * _Nonnull, AVAudioFrameCount) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length) {
     AVAudioFrameCount frame = 0;
     AVAudioFrameCount * frame_t = &frame;
-    double normalized_index = 0.f;
-    double * normalized_index_t = &normalized_index;
     
-    simd_double2 frequency_theta_v = simd_make_double2(0.0, 0.0);
-    simd_double2 frequencies_v = simd_make_double2(random_musical_note_generator());
-    simd_double2 frequency_theta_increment_v = simd_make_double2(D_PI * frequencies_v / simd_make_double2(buffer_length));
-   
-    for (*frame_t; *frame_t < buffer_length; *frame_t += 1)
-    {
-        simd_double2 tone_v = _simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)));
-        !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-
-        channel_data[0][*frame_t] = (Float32)tone_v[0];
-    }
+    __block simd_double2 frequency_theta_v = simd_make_double2(0.0, 0.0);
+    //    volatile simd_double2 frequencies_v = simd_make_double2(random_musical_note_generator(), random_musical_note_generator());
+    simd_double2 frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
+                                                                 (2.f * M_PI) * random_musical_note_generator() / buffer_length);
+    for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1)
+        {
+            simd_double2 tone_v = (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)))));
+            !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
+            float_channel_data[0][*frame_t] = (Float32)tone_v[0];
+            float_channel_data[1][*frame_t] = (Float32)tone_v[1];
+        }
 };
 
 static typeof(void (^)(void)) buffer_signal = ^{
