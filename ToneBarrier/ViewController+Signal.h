@@ -10,6 +10,7 @@
 #import "ViewController+Audio.h"
 #import <Foundation/Foundation.h>
 #import <GameKit/GameKit.h>
+#import <simd/simd.h>
 
 #include "easing.h"
 #include <math.h>
@@ -19,33 +20,33 @@ NS_ASSUME_NONNULL_BEGIN
 #define PI 3.1415926535897932384626
 #define D_PI simd_make_double2(2.f * M_PI)
 
-static double (^scale)(double, double, double, double, double) = ^ double (double val_old, double min_new, double max_new, double min_old, double max_old) {
-    double val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
+static simd_double1 (^scale)(simd_double1, simd_double1, simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 val_old, simd_double1 min_new, simd_double1 max_new, simd_double1 min_old, simd_double1 max_old) {
+    simd_double1 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
     
     return val_new;
 };
 
-static double (^normalize_value)(double, double, double) = ^double(double min, double max, double value) {
-    double result = (value - min) / (max - min);
+static simd_double1 (^normalize_value)(simd_double1, simd_double1, simd_double1) = ^simd_double1(simd_double1 min, simd_double1 max, simd_double1 value) {
+    simd_double1 result = (value - min) / (max - min);
     return result;
 };
 
-static double (^(^normalized_random_generator)(void))(void) = ^{
+static simd_double1 (^(^normalized_random_generator)(void))(void) = ^{
     srand48((unsigned int)time(0));
-    static double random;
-    return ^ (double * random_t) {
-        return ^ double {
+    static simd_double1 random;
+    return ^ (simd_double1 * random_t) {
+        return ^ simd_double1 {
             return (*random_t = (drand48()));
         };
     }(&random);
 };
 
-typedef typeof(double(^)(void)) random_generator;
-typedef typeof(double(^(* restrict))(void)) random_n_t;
-static double (^(^(^(^generate_random)(double(^)(void)))(double(^)(double)))(double(^)(double)))(void) = ^ (double(^randomize)(void)) {
-    return ^ (double(^distribute)(double)) {
-        return ^ (double(^scale)(double)) {
-            return ^ double {
+typedef typeof(simd_double1(^)(void)) random_generator;
+typedef typeof(simd_double1(^(* restrict))(void)) random_n_t;
+static simd_double1 (^(^(^(^generate_random)(simd_double1(^)(void)))(simd_double1(^)(simd_double1)))(simd_double1(^)(simd_double1)))(void) = ^ (simd_double1(^randomize)(void)) {
+    return ^ (simd_double1(^distribute)(simd_double1)) {
+        return ^ (simd_double1(^scale)(simd_double1)) {
+            return ^ simd_double1 {
                 return scale(distribute(randomize()));
             };
         };
@@ -113,50 +114,94 @@ typedef NS_ENUM(unsigned int, MusicalNoteFrequency) {
 //}  musical_note = { .note_frequency = { MusicalNoteFrequencyA, MusicalNoteFrequencyBFlat, MusicalNoteFrequencyB, MusicalNoteFrequencyC, MusicalNoteFrequencyCSharp, MusicalNoteFrequencyD, MusicalNoteFrequencyDSharp, MusicalNoteFrequencyE, MusicalNoteFrequencyF, MusicalNoteFrequencyFSharp, MusicalNoteFrequencyG, MusicalNoteFrequencyAFlat } };
 
 static unsigned int counter = 0;
-static double (^tonal_interval)(TonalInterval) = ^ double (TonalInterval interval) {
-    double consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
+static simd_double1 (^tonal_interval)(TonalInterval) = ^ simd_double1 (TonalInterval interval) {
+    simd_double1 consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
     return consonant_harmonic_interval_ratios[interval % TonalIntervalDefault];
 };
 
 static typeof(AVAudioPCMBuffer *) audio_buffer_ref = NULL;
 
-static double (^generate_normalized_random)(void);
+static simd_double1 (^generate_normalized_random)(void);
 volatile random_generator random_musical_note_generator;
 
-static double (^gaussian_distribution)(AVAudioFrameCount, AVAudioFrameCount, double, double, double) = ^ double (AVAudioFrameCount frame, AVAudioFrameCount frames, double mean, double variance, double duration) {
-    double normalized_time = (double)((double)frame / (double)frames);
-    double j = exp(-((pow((normalized_time - mean), 2.0) / pow(2.f * variance, 2.f)))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
-    double scaled_gaussian_distribution = 0.f + (((j - duration) * (1.f - 0.f)) / ((1.f - duration) - 0.f));
+static simd_double1 (^gaussian_distribution)(simd_double1, simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 x, simd_double1 mean, simd_double1 variance, simd_double1 duration) {
+    simd_double1 j = exp(-((pow((x - mean), 2.0) / pow(2.f * variance, 2.f)))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
+    simd_double1 scaled_gaussian_distribution = 0.f + (((j - duration) * (1.f - 0.f)) / ((1.f - duration) - 0.f));
     
     return scaled_gaussian_distribution;
 };
 
-static void (^signal_sample)(float * _Nonnull const * _Nonnull, AVAudioFrameCount) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length) {
+// Collection pointer
+typedef typeof(void **(^)(void)) source;
+static typeof(source) (^_Nonnull collection)(size_t) = ^ (size_t length) {
+    typedef void * element_collection[length];
+    typeof(element_collection) elements[length];
+    __block void ** elements_t = elements[0];
+    return ^ (void ** elements_ptr) {
+        return (^ void ** {
+            return elements_ptr;
+        });
+    }(elements_t);
+};
+
+// Element pointer generator (element access)
+typedef typeof(void **(^)(size_t)) stream;
+static typeof(stream) (^ _Nonnull elements)(typeof(source), size_t) = ^ (typeof(source) source, size_t stride) {
+    return ^ (void ** source_ptr) {
+        return (^ void ** (size_t index) {
+            return ((void **)source_ptr + (index * stride));
+        });
+    }(source());
+};
+
+// Element index iterator (element traversal)
+//
+
+// Applies an operation to an element in a given collection using the supplied pointer
+static void (^(^operation)(void *))(void **) = ^ (void * value) {
+    return ^ (void ** element_ptr) {
+        *(element_ptr) = value;
+    };
+};
+
+// Maps a value to a given collection and returns a block that returns a pointer to the source
+//static typeof(source) (^map)(typeof(stream), ) = ^ (typeof(stream) stream) {
+//
+//};
+
+static void (^generate_signal_sample)(void);
+static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAudioFrameCount, simd_double1 *))(void) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length, simd_double1 * normalized_time) {
     AVAudioFrameCount frame = 0;
     AVAudioFrameCount * frame_t = &frame;
+    __block simd_double1 time;
     __block simd_double2 tone_durations;
     __block simd_double2 tones;
+    __block simd_double2 frequency_theta_v;
+    __block simd_double2 frequency_theta_increment_v;
     
-    __block simd_double2 frequency_theta_v = simd_make_double2(0.0, 0.0);
-    __block simd_double2 frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
-                                                                         (2.f * M_PI) * random_musical_note_generator() / buffer_length);
-    // To-Do: Eliminate the for loop; load values into vDSP or SIMD vectors and perform calculations using vector functions instead
-    for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
-        ({
-            tone_durations = simd_make_double2(gaussian_distribution(*frame_t, buffer_length, 0.5, 0.15, 0.0),
-                                               gaussian_distribution(*frame_t, buffer_length, 0.5, 0.15, 0.0));
-            tones = simd_make_double2(tone_durations * (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v))))));
-            !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-            Float32 tone_pair = ((Float32)tones[0] + (pow(*frame_t / buffer_length, 3.f) * ((Float32)tones[1] - (Float32)tones[0])));
-            float_channel_data[0][*frame_t] = tone_pair;
-            float_channel_data[1][*frame_t] = tone_pair;
-        });
-    }
+    return ^{
+        frequency_theta_v = simd_make_double2(0.0, 0.0);
+        frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
+                                                                             (2.f * M_PI) * random_musical_note_generator() / buffer_length);
+        // To-Do: Eliminate the for loop; load values into vDSP or SIMD vectors and perform calculations using vector functions instead
+        for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
+            ({
+                time = *((simd_double1 *)normalized_time + (*frame_t)); //simd_smoothstep(0.f, (float)buffer_length, (float)frame); // TO-DO: Create a global array of normalized time values
+                tone_durations = simd_make_double2(gaussian_distribution(time, 0.5, 0.15, 0.0),
+                                                   gaussian_distribution(time, 0.5, 0.15, 0.0));
+                tones = simd_make_double2(tone_durations * (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v))))));
+                !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
+                Float32 tone_pair = ((Float32)tones[0] + (0.5f * ((Float32)tones[1] - (Float32)tones[0])));
+                float_channel_data[0][*frame_t] = tone_pair;
+                float_channel_data[1][*frame_t] = tone_pair;
+            });
+        }
+    };
 };
 
 static typeof(void (^)(void)) buffer_signal = ^{
     NSLog(@"%s", __PRETTY_FUNCTION__);
-    signal_sample(audio_buffer_ref.floatChannelData, audio_buffer_ref.frameLength);
+    generate_signal_sample();
     [player_node_ref scheduleBuffer:audio_buffer_ref atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
         if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) if ([player_node_ref isPlaying]) buffer_signal();
         NSLog(@"AVAudioPlayerNodeCompletionDataPlayedBack\n");
@@ -170,9 +215,18 @@ static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFor
         audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
         audio_buffer_ref.frameLength = frame_count;
         generate_normalized_random = normalized_random_generator();
-        random_musical_note_generator = generate_random(generate_normalized_random)(^ double (double n) { return n; })(^ double (double n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+        random_musical_note_generator = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return n; })(^ simd_double1 (simd_double1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+        
+        simd_double1 normalized_time[frame_count];
+        simd_double1 * normalized_time_t = &normalized_time[0];
+        for (AVAudioFrameCount frame = 0; frame < frame_count; frame++) {
+            *((simd_double1 *)normalized_time_t + frame) = simd_smoothstep((simd_double1)0.f, (simd_double1)frame_count, (simd_double1)frame);
+        }
+        generate_signal_sample = signal_sample_generator(audio_buffer_ref.floatChannelData, audio_buffer_ref.frameLength, normalized_time_t);
+        
+        
     });
-    //        double (^generate_normalized_random)(void) = normalized_random_generator();
+    //        simd_double1 (^generate_normalized_random)(void) = normalized_random_generator();
     //        static random_generator random_musical_note_generator;
     //        random_musical_note_generator = generate_random(generate_normalized_random)(^ Float32 (Float32 n) { return n; })(^ Float32 (Float32 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
     //        signal_sample = ^ (AVAudioFrameCount frame_start, AVAudioFrameCount frame_split, AVAudioFrameCount frame_end, Float32 * channel_l, Float32 * channel_r) {
