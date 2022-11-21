@@ -125,7 +125,7 @@ static simd_double1 (^generate_normalized_random)(void);
 volatile random_generator random_musical_note_generator;
 
 static simd_double1 (^gaussian_distribution)(simd_double1, simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 x, simd_double1 mean, simd_double1 variance, simd_double1 duration) {
-    simd_double1 j = exp(-((pow((x - mean), 2.0) / pow(2.f * variance, 2.f)))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
+    simd_double1 j = exp(-((pow((x - mean), 2.f) / pow(2.f * variance, 2.f)))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
     simd_double1 scaled_gaussian_distribution = 0.f + (((j - duration) * (1.f - 0.f)) / ((1.f - duration) - 0.f));
     
     return scaled_gaussian_distribution;
@@ -182,16 +182,16 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
     return ^{
         frequency_theta_v = simd_make_double2(0.0, 0.0);
         frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
-                                                                             (2.f * M_PI) * random_musical_note_generator() / buffer_length);
+                                                        (2.f * M_PI) * random_musical_note_generator() / buffer_length);
         // To-Do: Eliminate the for loop; load values into vDSP or SIMD vectors and perform calculations using vector functions instead
         for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
             ({
-                time = *((simd_double1 *)normalized_time + (*frame_t)); //simd_smoothstep(0.f, (float)buffer_length, (float)frame); // TO-DO: Create a global array of normalized time values
-                tone_durations = simd_make_double2(gaussian_distribution(time, 0.5, 0.15, 0.0),
-                                                   gaussian_distribution(time, 0.5, 0.15, 0.0));
-                tones = simd_make_double2(tone_durations * (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v))))));
+                time = *((simd_double1 *)normalized_time + (*frame_t));
+                tone_durations = simd_make_double2(gaussian_distribution(time, 0.15, 0.15, 0.0),
+                                                   gaussian_distribution(time, 0.85, 0.15, 0.0));
+                tones = (simd_make_double2(_simd_sin_d2(simd_make_double2((frequency_theta_v += frequency_theta_increment_v)))));
                 !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-                Float32 tone_pair = ((Float32)tones[0] + (0.5f * ((Float32)tones[1] - (Float32)tones[0])));
+                Float32 tone_pair = (((Float32)tones[0] * tone_durations[0]) + (0.5f * (((Float32)tones[1] * tone_durations[1]) - ((Float32)tones[0] * tone_durations[0]))));
                 float_channel_data[0][*frame_t] = tone_pair;
                 float_channel_data[1][*frame_t] = tone_pair;
             });
