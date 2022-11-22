@@ -20,33 +20,33 @@ NS_ASSUME_NONNULL_BEGIN
 #define PI 3.1415926535897932384626
 #define D_PI simd_make_double2(2.f * M_PI)
 
-static simd_float1 (^scale)(simd_float1, simd_float1, simd_float1, simd_float1, simd_float1) = ^ simd_float1 (simd_float1 val_old, simd_float1 min_new, simd_float1 max_new, simd_float1 min_old, simd_float1 max_old) {
-   simd_float1 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
+static simd_double1 (^scale)(simd_double1, simd_double1, simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 val_old, simd_double1 min_new, simd_double1 max_new, simd_double1 min_old, simd_double1 max_old) {
+   simd_double1 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
    
    return val_new;
 };
 
-static simd_float1 (^normalize_value)(simd_float1, simd_float1, simd_float1) = ^simd_float1(simd_float1 min, simd_float1 max, simd_float1 value) {
-   simd_float1 result = (value - min) / (max - min);
+static simd_double1 (^normalize_value)(simd_double1, simd_double1, simd_double1) = ^simd_double1(simd_double1 min, simd_double1 max, simd_double1 value) {
+   simd_double1 result = (value - min) / (max - min);
    return result;
 };
 
-static simd_float1 (^(^normalized_random_generator)(void))(void) = ^{
+static simd_double1 (^(^normalized_random_generator)(void))(void) = ^{
    srand48((unsigned int)time(0));
-   static simd_float1 random;
-   return ^ (simd_float1 * random_t) {
-      return ^ simd_float1 {
+   static simd_double1 random;
+   return ^ (simd_double1 * random_t) {
+      return ^ simd_double1 {
          return (*random_t = (drand48()));
       };
    }(&random);
 };
 
-typedef typeof(simd_float1(^)(void)) random_generator;
-typedef typeof(simd_float1(^(* restrict))(void)) random_n_t;
-static simd_float1 (^(^(^(^generate_random)(simd_float1(^)(void)))(simd_float1(^)(simd_float1)))(simd_float1(^)(simd_float1)))(void) = ^ (simd_float1(^randomize)(void)) {
-   return ^ (simd_float1(^distribute)(simd_float1)) {
-      return ^ (simd_float1(^scale)(simd_float1)) {
-         return ^ simd_float1 {
+typedef typeof(simd_double1(^)(void)) random_generator;
+typedef typeof(simd_double1(^(* restrict))(void)) random_n_t;
+static simd_double1 (^(^(^(^generate_random)(simd_double1(^)(void)))(simd_double1(^)(simd_double1)))(simd_double1(^)(simd_double1)))(void) = ^ (simd_double1(^randomize)(void)) {
+   return ^ (simd_double1(^distribute)(simd_double1)) {
+      return ^ (simd_double1(^scale)(simd_double1)) {
+         return ^ simd_double1 {
             return scale(distribute(randomize()));
          };
       };
@@ -114,14 +114,14 @@ typedef NS_ENUM(unsigned int, MusicalNoteFrequency) {
 //}  musical_note = { .note_frequency = { MusicalNoteFrequencyA, MusicalNoteFrequencyBFlat, MusicalNoteFrequencyB, MusicalNoteFrequencyC, MusicalNoteFrequencyCSharp, MusicalNoteFrequencyD, MusicalNoteFrequencyDSharp, MusicalNoteFrequencyE, MusicalNoteFrequencyF, MusicalNoteFrequencyFSharp, MusicalNoteFrequencyG, MusicalNoteFrequencyAFlat } };
 
 static unsigned int counter = 0;
-static simd_float1 (^tonal_interval)(TonalInterval) = ^ simd_float1 (TonalInterval interval) {
-   simd_float1 consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
+static simd_double1 (^tonal_interval)(TonalInterval) = ^ simd_double1 (TonalInterval interval) {
+   simd_double1 consonant_harmonic_interval_ratios [8] = {1.0, 2.0, 5.0/3.0, 4.0/3.0, 5.0/4.0, 6.0/5.0, (1.1 + drand48()), 5.0/4.0};
    return consonant_harmonic_interval_ratios[interval % TonalIntervalDefault];
 };
 
 static typeof(AVAudioPCMBuffer *) audio_buffer_ref = NULL;
 
-static simd_float1 (^generate_normalized_random)(void);
+static simd_double1 (^generate_normalized_random)(void);
 volatile random_generator random_musical_note_generator;
 
 static simd_double1 (^gaussian_distribution)(simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 x, simd_double1 mean, simd_double1 variance) {
@@ -195,39 +195,30 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
       envelope_theta_v = simd_make_double2(0.0, 0.0);
       envelope_theta_increment_v = simd_make_double2(M_PI / buffer_length,
                                                      M_PI / buffer_length);
-
+      
       for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
          ({
-            time = *((simd_double1 *)normalized_time + (*frame_t));
-            tones = simd_make_double2(simd_make_double2(sinf(4.f * time * M_PI) * gaussian_distribution(time, -.5f, 1.f)) * _simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )));
-//                                      simd_make_double2(simd_make_double2(gaussian_distribution(time, 0.5f, 1.f, 1.f), gaussian_distribution(time, 0.5f, 1.f, 1.f)) * _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v  = simd_make_double2(envelope_theta_v + envelope_theta_increment_v));    }) ))));
-//                                      simd_make_double2(0.5f * _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v  = simd_make_double2(gaussian_distribution(time, 0.5f, 1.f, 1.f), gaussian_distribution(time, 0.5f, 1.f, 1.f))) * simd_make_double2(logistic_function(time, 20.f), logistic_function(time, 10.f)); }) ))));
-
-            // To-Do: Either compress each tone to fit into the number of frames that corresponds to their respective durations; or,
-            //        Keep each tone as two seconds longs, but apply a slow release to the envelope of the first tone and a slow attack to the envelope of the second tone
-            //        (in other words, the sustain of the envelope should be as long as the duration, while the release and attack should fill the gaps
-            
-//            tone_durations = simd_make_double2(logistic_function(time, 20.f), logistic_function(time, 20.f));
-//            tones = simd_make_double2(tones * tone_durations);
-            
-            *((float *)float_channel_data[0] + *frame_t) = tones[0];
             ({
+               //            time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
+               //            tone_durations = simd_make_double2(logistic_function(time, 20.f), logistic_function(time, 20.f));
+               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) *
+                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v = simd_make_double2(envelope_theta_v + envelope_theta_increment_v)); }) )));
                !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
                !(envelope_theta_v > D_PI) && (envelope_theta_v -= D_PI);
             });
-            *((float *)float_channel_data[0] + *frame_t) = tones[0];
-            *((float *)float_channel_data[1] + *frame_t) = tones[1];
+            ({
+               *((float *)float_channel_data[0] + *frame_t) = tones[0];
+               *((float *)float_channel_data[1] + *frame_t) = tones[1];
+            });
          });
       }
    };
 };
 
 static typeof(void (^)(void)) buffer_signal = ^{
-   NSLog(@"%s", __PRETTY_FUNCTION__);
    generate_signal_sample();
    [player_node_ref scheduleBuffer:audio_buffer_ref atTime:nil options:AVAudioPlayerNodeBufferInterruptsAtLoop completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack completionHandler:^(AVAudioPlayerNodeCompletionCallbackType callbackType) {
       if (callbackType == AVAudioPlayerNodeCompletionDataPlayedBack) if ([player_node_ref isPlaying]) buffer_signal();
-      NSLog(@"AVAudioPlayerNodeCompletionDataPlayedBack\n");
    }];
 };
 
@@ -238,7 +229,7 @@ static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFor
       audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
       audio_buffer_ref.frameLength = frame_count;
       generate_normalized_random = normalized_random_generator();
-      random_musical_note_generator = generate_random(generate_normalized_random)(^ simd_float1 (simd_float1 n) { return n; })(^ simd_float1 (simd_float1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+      random_musical_note_generator = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return n; })(^ simd_double1 (simd_double1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
       
       simd_double1 normalized_time[frame_count];
       simd_double1 * normalized_time_t = &normalized_time[0];
