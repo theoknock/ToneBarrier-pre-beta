@@ -199,10 +199,16 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
       for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
          ({
             ({
-               //            time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
-               //            tone_durations = simd_make_double2(logistic_function(time, 20.f), logistic_function(time, 20.f));
-               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) *
-                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v = simd_make_double2(envelope_theta_v + envelope_theta_increment_v)); }) )));
+               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
+               tone_durations = simd_make_double2(_simd_sinpi_d2(4.f * ((frequency_theta_increment_v * (*frame_t)) / (frequency_theta_increment_v * buffer_length))));
+//               tone_durations = simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f));
+//               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
+//               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
+               
+               
+               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) * tone_durations);
+//                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v  = simd_make_double2(envelope_theta_v  + envelope_theta_increment_v)); }) ))));
+//               tones *= tone_durations;
                !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
                !(envelope_theta_v > D_PI) && (envelope_theta_v -= D_PI);
             });
