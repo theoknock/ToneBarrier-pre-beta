@@ -150,7 +150,7 @@
 		B972D36E236A8EA400E1A7A1 /* WatchToneBarrierInterfaceController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WatchToneBarrierInterfaceController.m; sourceTree = "<group>"; wrapsLines = 0; };
 		B9869C6D28673C19004C4E18 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		B988D9CC291257FC007905FE /* ViewController+Audio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ViewController+Audio.h"; sourceTree = "<group>"; };
-		B988D9D329126216007905FE /* ViewController+Signal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ViewController+Signal.h"; sourceTree = "<group>"; wrapsLines = 0; };
+		B988D9D329126216007905FE /* ViewController+Signal.h */ = {isa = PBXFileReference; indentWidth = 3; lastKnownFileType = sourcecode.c.h; path = "ViewController+Signal.h"; sourceTree = "<group>"; wrapsLines = 0; };
 		B98CF29922D5739900661419 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ViewController.h; path = ../JABPlanetaryHourToneBarrier/ViewController.h; sourceTree = "<group>"; };
 		B98EBEED230F3E1100C94E2E /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS6.0.sdk/System/Library/Frameworks/HealthKit.framework; sourceTree = DEVELOPER_DIR; };
 		B99A4E64282BD3580009CF6A /* ToneBarrier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ToneBarrier.app; sourceTree = BUILT_PRODUCTS_DIR; };
