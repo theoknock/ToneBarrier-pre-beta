@@ -203,9 +203,10 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
          ({
             ({
 //               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
-               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(8.f * ((frequency_theta_increment_v[0] * (*frame_t)) / time[0]),
-                                                                                   2.f * ((frequency_theta_increment_v[1] * (*frame_t)) / time[1]))));
-//               tone_durations = simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f));
+               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(pow(((frequency_theta_increment_v[0] * (*frame_t)) / time[0]), 100.f),
+                                                                                   pow(((frequency_theta_increment_v[1] * (*frame_t)) / time[1]), (1.f / 100.f)))));
+//               tone_durations = simd_make_double2(gaussian_distribution((frequency_theta_increment_v[0] * (*frame_t)) / time[0], 0.f, 1.f), gaussian_distribution((  frequency_theta_increment_v[1] * (*frame_t)) / time[0], 0.f, 1.f));
+//               tone_durations *= simd_make_double2(logistic_function(tone_durations[0], 1.f), logistic_function(tone_durations[1], 100.f));
 //               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
 //               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
                
