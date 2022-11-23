@@ -126,6 +126,7 @@ static typeof(AVAudioPCMBuffer *) audio_buffer_ref = NULL;
 
 static simd_double1 (^generate_normalized_random)(void);
 volatile random_generator random_musical_note_generator;
+volatile random_generator random_tone_duration_generator;
 
 static simd_double1 (^gaussian_distribution)(simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 x, simd_double1 mean, simd_double1 variance) {
    simd_double1 j = (exp(-((pow((x - mean), 2.f) / pow(2.f * variance, 2.f))))); //(1.f / (std_dev * sqrt(2.f * M_PI))) * (exp(-((pow((x - mean), 2.f) / pow(2.f * variance, 2.f))))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
@@ -183,6 +184,7 @@ static void (^generate_signal_sample)(void);
 static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAudioFrameCount, simd_double1 *))(void) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length, simd_double1 * normalized_time) {
    AVAudioFrameCount frame = 0;
    AVAudioFrameCount * frame_t = &frame;
+   __block simd_double1 duration_split; 
    __block simd_double2 tone_durations;
    __block simd_double2 tones;
    __block simd_double2 frequency_theta_v;
@@ -199,9 +201,9 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
                                             (frequency_theta_increment_v[1] * buffer_length));
       
       envelope_theta_v = simd_make_double2(0.0, 0.0);
-      simd_double1 tone_a_duration =  M_PI / buffer_length;;//        scale(M_PI / buffer_length, 0.0, 0.25, M_PI / buffer_length, M_PI);
-      simd_double1 tone_b_duration =  M_PI / buffer_length; //scale(M_PI / buffer_length, 0.25, 1.0, tone_a_duration, M_PI);
-      envelope_theta_increment_v = simd_make_double2(tone_a_duration, tone_b_duration);
+      simd_double1 duration_split = random_tone_duration_generator();
+//      tone_durations = simd_make_double2(duration_split, 2duration_split);
+      envelope_theta_increment_v = simd_make_double2(M_PI / buffer_length, M_PI / buffer_length);
       
       for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
          ({
@@ -217,15 +219,11 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
                //               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
                //               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
                
-               ((!(*(frame_t) <= (buffer_length * 0.15f)) && ( ({ envelope_theta_v[0] = 0.f; }) )));
-               ((!(*(frame_t) >= (buffer_length * 0.15f))  && ( ({ envelope_theta_v[1] = 0.f; }) ))); // ( ({ (envelope_theta_v[1] = (simd_double1)(envelope_theta_v[1] + envelope_theta_increment_v[1])); }) )); //(simd_double1((frequency_theta_v[0] = frequency_theta_v[0] + frequency_theta_increment_v[0];
-               
-               //               tones = simd_make_double2(_simd_sin_d2(frequency_theta_v) * _simd_sin_d2(envelope_theta_v));
+               ((!(*(frame_t) <= (buffer_length * duration_split)) && ( ({ envelope_theta_v[0] = 0.f; }) )));
+               ((!(*(frame_t) >= (buffer_length * duration_split)) && ( ({ envelope_theta_v[1] = 0.f; }) ))); // ( ({ (envelope_theta_v[1] = (simd_double1)(envelope_theta_v[1] + envelope_theta_increment_v[1])); }) )); //(simd_double1((frequency_theta_v[0] = frequency_theta_v[0] + frequency_theta_increment_v[0];
                
                !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-               (!(envelope_theta_v > D_PI) && (envelope_theta_v -= D_PI));
-               // This should determine whether envelope_theta_v is incremented
-               
+               (!(envelope_theta_v > D_PI) && (envelope_theta_v -= D_PI));\
             });
             ({
                *((float *)float_channel_data[0] + *frame_t) = tones[0];
@@ -250,7 +248,8 @@ static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFor
       audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
       audio_buffer_ref.frameLength = frame_count;
       generate_normalized_random = normalized_random_generator();
-      random_musical_note_generator = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return n; })(^ simd_double1 (simd_double1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+      random_musical_note_generator  = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return n; })(^ simd_double1 (simd_double1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
+      random_tone_duration_generator = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return normalize_value(0.0, 2.0, n); })(^ simd_double1 (simd_double1 n) { return scale(n, 0.25, 1.75, 0.0, 2.0); });
       
       simd_double1 normalized_time[frame_count];
       simd_double1 * normalized_time_t = &normalized_time[0];
