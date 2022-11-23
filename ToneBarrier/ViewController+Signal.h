@@ -14,6 +14,9 @@
 
 #include "easing.h"
 #include <math.h>
+#include <time.h>
+#include <stdio.h>
+
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -32,7 +35,7 @@ static simd_double1 (^normalize_value)(simd_double1, simd_double1, simd_double1)
 };
 
 static simd_double1 (^(^normalized_random_generator)(void))(void) = ^{
-   srand48((unsigned int)time(0));
+   srand48((unsigned int)clock());
    static simd_double1 random;
    return ^ (simd_double1 * random_t) {
       return ^ simd_double1 {
@@ -128,7 +131,7 @@ static simd_double1 (^gaussian_distribution)(simd_double1, simd_double1, simd_do
    simd_double1 j = (exp(-((pow((x - mean), 2.f) / pow(2.f * variance, 2.f))))); //(1.f / (std_dev * sqrt(2.f * M_PI))) * (exp(-((pow((x - mean), 2.f) / pow(2.f * variance, 2.f))))); // divide a mean of .5 or less by 4 to get a variance value that extends to the x = 0
    //    simd_float1 scaled_gaussian_distribution = 0.f + (((j - 0.f) * (1.f - 0.f)) / ((1.f - 0.f) - 0.f));
    
-//   simd_float1 s = sinf(M_PI * x);
+   //   simd_float1 s = sinf(M_PI * x);
    
    return j;
 };
@@ -184,7 +187,7 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
    __block simd_double2 tones;
    __block simd_double2 frequency_theta_v;
    __block simd_double2 frequency_theta_increment_v;
-    __block simd_double2 envelope_theta_v;
+   __block simd_double2 envelope_theta_v;
    __block simd_double2 envelope_theta_increment_v;
    
    return ^{
@@ -193,34 +196,36 @@ static void (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAu
                                                       (2.f * M_PI) * random_musical_note_generator() / buffer_length);
       
       simd_double2 time = simd_make_double2((frequency_theta_increment_v[0] * buffer_length),
-                                                        (frequency_theta_increment_v[1] * buffer_length));
-     
+                                            (frequency_theta_increment_v[1] * buffer_length));
+      
       envelope_theta_v = simd_make_double2(0.0, 0.0);
-      // To-Do: Modify the envelope increment to equal zero after or before its duration;
-      //        rescale the range to normalize
-      envelope_theta_increment_v = simd_make_double2(M_PI / buffer_length,
-                                                     M_PI / buffer_length);
+      simd_double1 tone_a_duration =  M_PI / buffer_length;;//        scale(M_PI / buffer_length, 0.0, 0.25, M_PI / buffer_length, M_PI);
+      simd_double1 tone_b_duration =  M_PI / buffer_length; //scale(M_PI / buffer_length, 0.25, 1.0, tone_a_duration, M_PI);
+      envelope_theta_increment_v = simd_make_double2(tone_a_duration, tone_b_duration);
       
       for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
          ({
             ({
-//               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
+               //               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
                
-//               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(pow(((frequency_theta_increment_v[0] * (*frame_t)) / time[0]), 0.25f),
-//                                                                                   pow(((frequency_theta_increment_v[1] * (*frame_t)) / time[1]), 0.75f))));
-//               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) * tone_durations);
-//               tone_durations = simd_make_double2(gaussian_distribution((frequency_theta_increment_v[0] * (*frame_t)) / time[0], 0.f, 1.f), gaussian_distribution((  frequency_theta_increment_v[1] * (*frame_t)) / time[0], 0.f, 1.f));
-//               tone_durations *= simd_make_double2(logistic_function(tone_durations[0], 1.f), logistic_function(tone_durations[1], 100.f));
-//               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
-//               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
-               
+               //               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(pow(((frequency_theta_increment_v[0] * (*frame_t)) / time[0]), 0.25f),
+               //                                                                                   pow(((frequency_theta_increment_v[1] * (*frame_t)) / time[1]), 0.75f))));
                tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) *
-                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v  = simd_make_double2(envelope_theta_v  + envelope_theta_increment_v)); }) )));
-
+                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v = simd_make_double2(envelope_theta_v + envelope_theta_increment_v)); }) )));
+               //               tone_durations = simd_make_double2(gaussian_distribution((frequency_theta_increment_v[0] * (*frame_t)) / time[0], 0.f, 1.f), gaussian_distribution((  frequency_theta_increment_v[1] * (*frame_t)) / time[0], 0.f, 1.f));
+               //               tone_durations *= simd_make_double2(logistic_function(tone_durations[0], 1.f), logistic_function(tone_durations[1], 100.f));
+               //               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
+               //               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
+               
+               ((!(*(frame_t) <= (buffer_length * 0.15f)) && ( ({ envelope_theta_v[0] = 0.f; }) )));
+               ((!(*(frame_t) >= (buffer_length * 0.15f))  && ( ({ envelope_theta_v[1] = 0.f; }) ))); // ( ({ (envelope_theta_v[1] = (simd_double1)(envelope_theta_v[1] + envelope_theta_increment_v[1])); }) )); //(simd_double1((frequency_theta_v[0] = frequency_theta_v[0] + frequency_theta_increment_v[0];
+               
+               //               tones = simd_make_double2(_simd_sin_d2(frequency_theta_v) * _simd_sin_d2(envelope_theta_v));
+               
                !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
                (!(envelope_theta_v > D_PI) && (envelope_theta_v -= D_PI));
-               (!(*(frame_t) <= (buffer_length * 0.25f)) && (envelope_theta_v[0] = 0.f));
-               (!(*(frame_t) >= (buffer_length * 0.25f)) && (envelope_theta_v[1] = 0.f));
+               // This should determine whether envelope_theta_v is incremented
+               
             });
             ({
                *((float *)float_channel_data[0] + *frame_t) = tones[0];
