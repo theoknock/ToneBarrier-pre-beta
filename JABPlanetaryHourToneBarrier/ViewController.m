@@ -39,8 +39,26 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    unsigned long time_value;
+    unsigned long *pointer_to_time_value_address;
+    pointer_to_time_value_address = &time_value;
+    unsigned long ** pointer_to_time_value_address_pointer;
+    pointer_to_time_value_address_pointer = &pointer_to_time_value_address;
+    **pointer_to_time_value_address_pointer = 3UL;
+
+    printf("time_value: %lu\t\tpointer_to_time_value_address: %lu\t\tpointer_to_time_value_address_pointer: %lu\n", time_value, *pointer_to_time_value_address, **pointer_to_time_value_address_pointer);
+
+    typedef simd_double1 * normalized_time_ref[5 * sizeof(simd_double1 *)];
+    typeof(normalized_time_ref) normalized_time[5 * sizeof(simd_double1 *)]; // allocate 88200 memory addresses for time
+//    simd_double1 * normalized_time_t = normalized_time[0]; // the pointer to the first memory address
+//    __block simd_double1 ** normalized_time_ptr = &normalized_time[0]; // the value the pointer to the first memory address points to
+    simd_double1 time = clock();
+//    normalized_time[1] = &time;
+    printf("%p\t\t%p\t\t%p\t\t%p\t\t%p\t\t%p\n", &normalized_time, *normalized_time[0], &normalized_time[0], *(&normalized_time[0] + sizeof(simd_double1 *)), (&normalized_time + sizeof(simd_double1 *)), *(&normalized_time + sizeof(simd_double1 *)));
+    
+    
     [self.playButton setImage:[UIImage systemImageNamed:@"stop"] forState:UIControlStateSelected];
-    [self.playButton setImage:[UIImage systemImageNamed:@"play"]  forState:UIControlStateNormal];
+    [self.playButton setImage:[UIImage systemImageNamed:@"play"] forState:UIControlStateNormal];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:UIDeviceBatteryLevelDidChangeNotification object:self];
     
@@ -90,9 +108,8 @@
     [self.routePickerView setDelegate:(id<AVRoutePickerViewDelegate> _Nullable)self];
     
     audio_session();
-    audio_engine();
-//    player_node();
-    audio_buffer([audio_engine_ref.mainMixerNode outputFormatForBus:0]);
+    audio_engine(player_node());
+    audio_buffer([audio_engine_ref.mainMixerNode outputFormatForBus:(AVAudioNodeBus)0]);
     
 }
 
@@ -535,7 +552,7 @@ static NSDictionary<NSString *, id> * (^deviceStatus)(UIDevice *) = ^NSDictionar
         return [player_node_ref isPlaying];
     }()];
     printf("\nPlayer node is %s\n", (player_node_ref.isPlaying) ? "playing." : "not playing.");
-    if (player_node_ref.isPlaying) buffer_signal();
+    if (player_node_ref.isPlaying) generate_audio_buffer();
     else printf("Error calling buffer_signal\n");
     if (audio_engine_error || audio_session_error)
     ^{

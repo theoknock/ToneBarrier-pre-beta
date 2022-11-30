@@ -11,33 +11,18 @@
 #import <Foundation/Foundation.h>
 #import <GameKit/GameKit.h>
 #import <simd/simd.h>
+#import <Accelerate/Accelerate.h>
 
-#include <Accelerate/Accelerate.h>
 #include "easing.h"
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
-#include <stdint.h>
 
 
 NS_ASSUME_NONNULL_BEGIN
 
 #define PI 3.1415926535897932384626
 #define D_PI simd_make_double2(2.f * M_PI)
-
-typedef union {
-   Float32 flt;
-   UInt32 bits;
-} lens_t;
-
-UInt32 f2i(Float32 x) {
-  return ((lens_t) {.flt = x}).bits;
-}
-
-Float32 i2f(UInt32 x) {
-  return ((lens_t) {.bits = x}).flt;
-}
-
 
 static simd_double1 (^scale)(simd_double1, simd_double1, simd_double1, simd_double1, simd_double1) = ^ simd_double1 (simd_double1 val_old, simd_double1 min_new, simd_double1 max_new, simd_double1 min_old, simd_double1 max_old) {
    simd_double1 val_new = min_new + ((((val_old - min_old) * (max_new - min_new))) / (max_old - min_old));
@@ -196,87 +181,58 @@ static void (^(^operation)(void *))(void **) = ^ (void * value) {
 //
 //};
 
-//static typeof(audio_buffer_ref) (^generate_signal_sample)(void);
-//static typeof(audio_buffer_ref) (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAudioFrameCount, simd_double1 *))(void) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length, simd_double1 * normalized_time) {
-//   AVAudioFrameCount frame = 0;
-//   AVAudioFrameCount * frame_t = &frame;
-//   __block simd_double1 duration_split;
-//   __block simd_double2 tone_durations;
-//   __block simd_double2 tones;
-//   __block simd_double2 frequency_theta_v;
-//   __block simd_double2 frequency_theta_increment_v;
-//   __block simd_double2 envelope_theta_v;
-//   __block simd_double2 envelope_theta_increment_v;
-//
-//   return ^ typeof(audio_buffer_ref) {
-//      frequency_theta_v = simd_make_double2(0.0, 0.0);
-//      frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
-//                                                      (2.f * M_PI) * random_musical_note_generator() / buffer_length);
-//
-//      simd_double2 time = simd_make_double2((frequency_theta_increment_v[0] * buffer_length),
-//                                            (frequency_theta_increment_v[1] * buffer_length));
-//
-//      envelope_theta_v = simd_make_double2(0.0, 0.0);
-//      duration_split = scale(random_tone_duration_generator() * 2.f, 0.25, 1.75, 0.0, 2.0) * buffer_length;
-//      tone_durations = simd_make_double2(duration_split, 2.0 - duration_split);
-//      envelope_theta_increment_v = simd_make_double2(M_PI / buffer_length, M_PI / buffer_length);
-//
-//      for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
-//         ({
-//            ({
-//               //               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
-//
-//               //               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(pow(((frequency_theta_increment_v[0] * (*frame_t)) / time[0]), 0.25f),
-//               //                                                                                   pow(((frequency_theta_increment_v[1] * (*frame_t)) / time[1]), 0.75f))));
-//               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) *
-//                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v = simd_make_double2(envelope_theta_v + envelope_theta_increment_v)); }) )));
-//               //               tone_durations = simd_make_double2(gaussian_distribution((frequency_theta_increment_v[0] * (*frame_t)) / time[0], 0.f, 1.f), gaussian_distribution((  frequency_theta_increment_v[1] * (*frame_t)) / time[0], 0.f, 1.f));
-//               //               tone_durations *= simd_make_double2(logistic_function(tone_durations[0], 1.f), logistic_function(tone_durations[1], 100.f));
-//               //               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
-//               //               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
-//
-//               ((!(*(frame_t) <=  duration_split) && ( ({ envelope_theta_v[0] = 0.f; }) )));
-//               ((!(*(frame_t) >=  duration_split) && ( ({ envelope_theta_v[1] = 0.f; }) ))); // ( ({ (envelope_theta_v[1] = (simd_double1)(envelope_theta_v[1] + envelope_theta_increment_v[1])); }) )); //(simd_double1((frequency_theta_v[0] = frequency_theta_v[0] + frequency_theta_increment_v[0];
-//
-//               !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
-//               (!(envelope_theta_v > D_PI) && (envelope_theta_v  -= D_PI));
-//            });
-//            ({
-//               *((float *)float_channel_data[0] + *frame_t) = tones[0];
-//               *((float *)float_channel_data[1] + *frame_t) = tones[1];
-//            });
-//         });
-//      }
-//      return audio_buffer_ref;
-//   };
-//};
-
-
 static typeof(audio_buffer_ref) (^generate_signal_sample)(void);
-static typeof(audio_buffer_ref) (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAudioFrameCount, simd_double1 **))(void) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length, simd_double1 ** normalized_time) {
-
+static typeof(audio_buffer_ref) (^(^signal_sample_generator)(float * _Nonnull const * _Nonnull, AVAudioFrameCount, simd_double1 *))(void) = ^ (float * _Nonnull const * _Nonnull float_channel_data, AVAudioFrameCount buffer_length, simd_double1 * normalized_time) {
    AVAudioFrameCount frame = 0;
    AVAudioFrameCount * frame_t = &frame;
-   const Float32 frequency = random_musical_note_generator();
-   typeof(frequency) * f = &frequency;
-   const Float32 amplitude = 1.f / frequency;
-   typeof(amplitude) * a = &amplitude;
-   __block Float32 T_PI = M_PI;
-   typeof(T_PI) * T_PI_PTR = &T_PI;
-
+   __block simd_double1 duration_split;
+   __block simd_double2 tone_durations;
+   __block simd_double2 tones;
+   __block simd_double2 frequency_theta_v;
+   __block simd_double2 frequency_theta_increment_v;
+   __block simd_double2 envelope_theta_v;
+   __block simd_double2 envelope_theta_increment_v;
+   
    return ^ typeof(audio_buffer_ref) {
+      
+      frequency_theta_v = simd_make_double2(0.0, 0.0);
+      frequency_theta_increment_v = simd_make_double2((2.f * M_PI) * random_musical_note_generator() / buffer_length,
+                                                      (2.f * M_PI) * random_musical_note_generator() / buffer_length);
+      
+      simd_double2 time = simd_make_double2((frequency_theta_increment_v[0] * buffer_length),
+                                            (frequency_theta_increment_v[1] * buffer_length));
+      
+      envelope_theta_v = simd_make_double2(0.0, 0.0);
+      duration_split = scale(random_tone_duration_generator() * 2.f, 0.25, 1.75, 0.0, 2.0) * buffer_length;
+      tone_durations = simd_make_double2(duration_split, 2.0 - duration_split);
+      envelope_theta_increment_v = simd_make_double2(M_PI / buffer_length, M_PI / buffer_length);
+      
       for (*frame_t = 0; *frame_t < buffer_length; *frame_t += 1) {
          ({
-            Float32 time = *((Float32 *)*normalized_time + *frame_t);
-            Float32 sample_signal = (*f) * (sinf(T_PI * (*f)) * (sinf(T_PI) * (*a)));
-           
-//            Float32 sample_signal = signal_sampler();
-            *((float *)float_channel_data[0] + *frame_t) = sample_signal;
-            *((float *)float_channel_data[1] + *frame_t) = sample_signal;
+            ({
+               //               time = (simd_double1)*((simd_double1 *)normalized_time + (*frame_t));
+               
+               //               tone_durations = simd_make_double2(_simd_sinpi_d2(simd_make_double2(pow(((frequency_theta_increment_v[0] * (*frame_t)) / time[0]), 0.25f),
+               //                                                                                   pow(((frequency_theta_increment_v[1] * (*frame_t)) / time[1]), 0.75f))));
+               tones = simd_make_double2(_simd_sin_d2(simd_make_double2( ({ (frequency_theta_v = simd_make_double2(frequency_theta_v + frequency_theta_increment_v)); }) )) *
+                                         _simd_sin_d2(simd_make_double2( ({ (envelope_theta_v = simd_make_double2(envelope_theta_v + envelope_theta_increment_v)); }) )));
+               //               tone_durations = simd_make_double2(gaussian_distribution((frequency_theta_increment_v[0] * (*frame_t)) / time[0], 0.f, 1.f), gaussian_distribution((  frequency_theta_increment_v[1] * (*frame_t)) / time[0], 0.f, 1.f));
+               //               tone_durations *= simd_make_double2(logistic_function(tone_durations[0], 1.f), logistic_function(tone_durations[1], 100.f));
+               //               tone_durations = simd_make_double2(logistic_function(time, 1.f), logistic_function(time, 1.f));
+               //               frequency_theta_increment_v = (frequency_theta_increment_v + simd_make_double2(gaussian_distribution(time, 0.f, 1.f), gaussian_distribution(time, 0.f, 1.f)));
+               
+               ((!(*(frame_t) <=  duration_split) && ( ({ envelope_theta_v[0] = 0.f; }) )));
+               ((!(*(frame_t) >=  duration_split) && ( ({ envelope_theta_v[1] = 0.f; }) ))); // ( ({ (envelope_theta_v[1] = (simd_double1)(envelope_theta_v[1] + envelope_theta_increment_v[1])); }) )); //(simd_double1((frequency_theta_v[0] = frequency_theta_v[0] + frequency_theta_increment_v[0];
+               
+               !(frequency_theta_v > D_PI) && (frequency_theta_v -= D_PI);
+               (!(envelope_theta_v > D_PI) && (envelope_theta_v  -= D_PI));
+            });
+            ({
+               *((float *)float_channel_data[0] + *frame_t) = tones[0];
+               *((float *)float_channel_data[1] + *frame_t) = tones[1];
+            });
          });
-         
       }
-
       return audio_buffer_ref;
    };
 };
@@ -288,70 +244,8 @@ static typeof(void (^)(void)) generate_audio_buffer = ^{
    }];
 };
 
-typedef typeof(void * _Nonnull) ptr;
-typedef typeof(void * _Nonnull * _Nullable) ptr_ref;
-typedef void(^ _Nonnull callback_blk)(typeof(ptr_ref), size_t);
-//typedef typeof(ptr_ref)(^ _Nonnull ptr_ref_generator)(size_t);
-
-const typeof(ptr_ref) null_ptr_ref = (void **)nil;
-static const typeof(ptr_ref) (^(^source_generator)(size_t count))(size_t index) = ^ (size_t count) {
-   typedef typeof(ptr) ptr_collection[count];
-   typeof(ptr_collection) collection[count];
-   __block typeof(ptr_ref) collection_t = collection[0];
-   return ^ (const typeof(ptr_ref) collection_ptr) {
-      return ^ (size_t index) {
-         return ^ (const typeof(ptr_ref) element_ptr) {
-            return element_ptr;
-         }((collection_ptr + (index * sizeof(typeof(ptr))))); // check for invalid/out-of-bounds index; return null_ptr_ref or valid ptr_ref
-      };
-   }(collection_t);
-};
-
-// (check index for in-range value and return 0 if out-of-range) (
-
-
-#define prev_elem(index) ~-index;
-#define next_elem(index) ~-index;
-
-//typedef typeof(void(^ _Nonnull)(typeof(ref_ptr) source, size_t count))     source_ref, element_source, operation_source;
-//typedef typeof(void(^ _Nonnull)(typeof(ref_ptr) source, size_t count))     source_ref, element_source, operation_source;
-//typedef typeof(void(^ _Nonnull)(typeof(ref_ptr)))                          blk_ref, element_blk, operation_blk;
-//typedef typeof(void *)                                                     ref_t, element_t, operation_t;
-//typedef typeof(typeof(stream_ref)(^ _Nonnull)(typeof(source_ref), size_t)) stream_generator, element_stream_generator, operation_stream_generator;
-//typedef typeof(void(^(^ _Nonnull)(size_t))(typeof(source_ref)))            source_generator, element_source_generator, operation_source_generator;
-//typedef typeof(void(^ _Nonnull )(typeof(blk_ref)))                         pipeline, element_pipeline, operation_pipeline;
-//
-//static typeof(source_generator) generate_source = ^ (size_t count) {
-//    typedef typeof(ref_t) collection_ref[count];
-//    typeof(collection_ref) elements[count];
-//    __block ref_ptr element_t = elements[0];
-//    return ^ (typeof(source_ref) source) {
-//        return source_blk(element, count);
-//    };
-//};
-//
-//static typeof(stream_generator) generate_stream = ^ (typeof(source_ref) source, size_t stride) {
-//    return ^ (ref_ptr source_ptr) {
-//        return (^ ref_ptr (size_t index) {
-//            return ((ref_ptr)source_ptr + (index * stride));
-//        });
-//    }(source());
-//};
-//
-//static void (^ _Nonnull (^ _Nonnull (^ _Nonnull iterator)(size_t, size_t))(typeof(element_source_generator), typeof(element_stream_generator)))(typeof(element_blk)) = ^ (size_t element_count, size_t element_size) {
-//    return ^ (typeof(element_source_generator) source, typeof(element_stream_generator) stream) {
-//        typeof(element_stream) stream_element_ptr = stream(source(element_count * element_size), element_size);
-//        return ^ (typeof(element_blk) element) {
-//            dispatch_apply(element_count, dispatch_get_main_queue(), ^(size_t iteration) {
-//                element(stream_element_ptr(iteration));
-//            });
-//        };
-//    };
-//};
-
-
 static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFormat * buffer_format) {
-   const AVAudioFrameCount frame_count = buffer_format.sampleRate * buffer_format.channelCount;
+   AVAudioFrameCount frame_count = buffer_format.sampleRate * buffer_format.channelCount;
    static dispatch_once_t onceToken;
    dispatch_once(&onceToken, ^{
       audio_buffer_ref = [[AVAudioPCMBuffer alloc] initWithPCMFormat:buffer_format frameCapacity:frame_count];
@@ -360,31 +254,12 @@ static typeof(audio_buffer_ref) (^audio_buffer)(AVAudioFormat *) = ^ (AVAudioFor
       random_musical_note_generator  = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return n; })(^ simd_double1 (simd_double1 n) { return pow(2.f, round(scale(n, MusicalNoteA, MusicalNoteAFlat, 0.0, 1.0))/12.f) * 440.f; });
       random_tone_duration_generator = generate_random(generate_normalized_random)(^ simd_double1 (simd_double1 n) { return normalize_value(0.0, 2.0, n); })(^ simd_double1 (simd_double1 n) { return scale(n, 0.25, 1.75, 0.0, 2.0); });
       
-//      iterator(frame_count, sizeof(Float64 *))(generate_source, generate_stream)(^ (Float64 frame) {
-//         return ^ (typeof(ref_ptr) element_ptr) {
-//            Float64 normalized_time_value = (Float64)(frame / frame_count);
-//            *((Float64 *)element_ptr) = normalized_time_value;
-//         };
-//      }(0.f));
-      
-typedef simd_double1 * normalized_time_ref[frame_count];
-typeof(normalized_time_ref) normalized_time;
-__block simd_double1 * normalized_time_ptr = &normalized_time;
-AVAudioFrameCount frame = 0;
-AVAudioFrameCount * frame_t = &frame;
-
-for (*frame_t = 0; *frame_t < frame_count; *frame_t += 1) {
-   simd_double1 frames = frame_count - 1;
-   frames = ((*frame_t - 1.0) / (frames - 1.0));
-   *(normalized_time_ptr + *frame_t) = frames;
-   printf("frames == %f == frames_t == %f\n", frames, (*(normalized_time_ptr + *frame_t)));
-}
-
-for (*frame_t = *frame_t - 1; *frame_t > 0; *frame_t -= 1) {
-   printf("time == %f\n", *(normalized_time_ptr + *frame_t));
-}
-      
-      generate_signal_sample = signal_sample_generator(audio_buffer_ref.floatChannelData, frame_count, normalized_time_ptr);
+      simd_double1 normalized_time[frame_count];
+      simd_double1 * normalized_time_t = &normalized_time[0];
+      for (AVAudioFrameCount frame = 0; frame < frame_count; frame++) {
+         *((simd_double1 *)normalized_time_t + frame) = simd_smoothstep((simd_double1)0.f, (simd_double1)frame_count, (simd_double1)frame);
+      }
+      generate_signal_sample = signal_sample_generator(audio_buffer_ref.floatChannelData, audio_buffer_ref.frameLength, normalized_time_t);
    });
    
    /*

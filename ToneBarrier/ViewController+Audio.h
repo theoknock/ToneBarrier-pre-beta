@@ -11,8 +11,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+//static typeof(AVAudioFormat *) audio_format_ref = NULL;
+//static typeof(audio_format_ref) (^audio_format)(void) = ^{
+//    static dispatch_once_t onceToken;
+//    dispatch_once(&onceToken, ^{
+//        audio_format_ref = [[AVAudioFormat alloc] initWithCommonFormat:AVAudioPCMFormatFloat64 sampleRate:192000.f channels:2 interleaved:FALSE];
+//    });
+//
+//    return audio_format_ref;
+//};
+
 static typeof(AVAudioPlayerNode *) player_node_ref = NULL;
-static typeof(player_node_ref) (^player_node)(void) = ^{
+static AVAudioPlayerNode * (^player_node)(void) = ^{
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         player_node_ref = [[AVAudioPlayerNode alloc] init];
@@ -25,14 +35,10 @@ static typeof(player_node_ref) (^player_node)(void) = ^{
 };
 
 static typeof(AVAudioEngine *) audio_engine_ref = NULL;
-static typeof(audio_engine_ref) (^audio_engine)(void) = ^{
+static typeof(audio_engine_ref) (^audio_engine)(typeof(player_node_ref)) = ^ (typeof(player_node_ref) player_node) {
     static dispatch_once_t onceSecurePredicate;
     dispatch_once(&onceSecurePredicate, ^{
         audio_engine_ref = [[AVAudioEngine alloc] init];
-        player_node_ref = [[AVAudioPlayerNode alloc] init];
-        [player_node_ref setRenderingAlgorithm:AVAudio3DMixingRenderingAlgorithmAuto];
-        [player_node_ref setSourceMode:AVAudio3DMixingSourceModeAmbienceBed];
-        [player_node_ref setPosition:AVAudioMake3DPoint(0.0, 0.0, 0.0)];
     });
     
     [audio_engine_ref attachNode:player_node_ref];
